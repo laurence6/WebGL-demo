@@ -7,11 +7,11 @@ precision mediump float;
 uniform mat4 uM, uV, uP, uN;
 
 attribute vec3 aPosition, aNormal;
-attribute vec2 aTexCoords;
+attribute vec3 aTexCoords;
 
 varying vec3 vVertPos; // in eye space
 varying vec3 vNormal;
-varying vec2 vTexCoords;
+varying vec3 vTexCoords;
 
 void main() {
     gl_PointSize = 4.0;
@@ -45,7 +45,7 @@ uniform samplerCube uTextureCubemap;
 
 varying vec3 vVertPos; // in eye space
 varying vec3 vNormal;
-varying vec2 vTexCoords;
+varying vec3 vTexCoords;
 
 void main() {
     if (uRenderMode == 1) {
@@ -62,7 +62,14 @@ void main() {
 
         gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
     } else if (uRenderMode == 2) {
-        gl_FragColor = texture2D(uTextures[1], vTexCoords);
+        int i = int(floor(vTexCoords[2]+0.5));
+        vec2 uv = vec2(vTexCoords);
+        if (i == 0) gl_FragColor = texture2D(uTextures[0], vec2(vTexCoords));
+        else if (i == 1) gl_FragColor = texture2D(uTextures[1], vec2(vTexCoords));
+        else if (i == 2) gl_FragColor = texture2D(uTextures[2], vec2(vTexCoords));
+        else if (i == 3) gl_FragColor = texture2D(uTextures[3], vec2(vTexCoords));
+        else if (i == 4) gl_FragColor = texture2D(uTextures[4], vec2(vTexCoords));
+        else if (i == 5) gl_FragColor = texture2D(uTextures[5], vec2(vTexCoords));
     } else if (uRenderMode == 3) {
         vec3 normal = normalize(vNormal);
         vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
@@ -240,7 +247,7 @@ class Primitive extends EmptyNode {
 Primitive.attributes = [
     {att: 'aPosition',  buf: 'bPosition',  dat: 'position',  n: 3},
     {att: 'aNormal',    buf: 'bNormal',    dat: 'normal',    n: 3},
-    {att: 'aTexCoords', buf: 'bTexCoords', dat: 'texCoords', n: 2},
+    {att: 'aTexCoords', buf: 'bTexCoords', dat: 'texCoords', n: 3},
 ];
 
 class Plane extends Primitive {
@@ -350,42 +357,42 @@ class Cube extends Primitive {
             0, 1, 0,
         ];
         this.texCoords = [
-            0, 0,
-            1, 0,
-            1, 1,
-            1, 1,
-            0, 1,
-            0, 0,
-            0, 0,
-            1, 0,
-            1, 1,
-            1, 1,
-            0, 1,
-            0, 0,
-            0, 0,
-            1, 0,
-            1, 1,
-            1, 1,
-            0, 1,
-            0, 0,
-            0, 0,
-            1, 0,
-            1, 1,
-            1, 1,
-            0, 1,
-            0, 0,
-            0, 0,
-            1, 0,
-            1, 1,
-            1, 1,
-            0, 1,
-            0, 0,
-            0, 0,
-            1, 0,
-            1, 1,
-            1, 1,
-            0, 1,
-            0, 0,
+            0, 0, 0,
+            1, 0, 0,
+            1, 1, 0,
+            1, 1, 0,
+            0, 1, 0,
+            0, 0, 0,
+            0, 0, 1,
+            1, 0, 1,
+            1, 1, 1,
+            1, 1, 1,
+            0, 1, 1,
+            0, 0, 1,
+            0, 0, 2,
+            1, 0, 2,
+            1, 1, 2,
+            1, 1, 2,
+            0, 1, 2,
+            0, 0, 2,
+            0, 0, 3,
+            1, 0, 3,
+            1, 1, 3,
+            1, 1, 3,
+            0, 1, 3,
+            0, 0, 3,
+            0, 0, 4,
+            1, 0, 4,
+            1, 1, 4,
+            1, 1, 4,
+            0, 1, 4,
+            0, 0, 4,
+            0, 0, 5,
+            1, 0, 5,
+            1, 1, 5,
+            1, 1, 5,
+            0, 1, 5,
+            0, 0, 5,
         ];
         this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
     }
@@ -814,12 +821,12 @@ function initShaders() {
 
 function initTexture2D() {
     const textureSrc = [
-        'texture/cubemap-debug/positive-x.jpg',
-        'texture/cubemap-debug/negative-x.jpg',
-        'texture/cubemap-debug/positive-y.jpg',
-        'texture/cubemap-debug/negative-y.jpg',
-        'texture/cubemap-debug/positive-z.jpg',
-        'texture/cubemap-debug/negative-z.jpg',
+        'texture/cubemap-mountain/negative-x.jpg',
+        'texture/cubemap-mountain/positive-x.jpg',
+        'texture/cubemap-mountain/negative-z.jpg',
+        'texture/cubemap-mountain/positive-z.jpg',
+        'texture/cubemap-mountain/negative-y.jpg',
+        'texture/cubemap-mountain/positive-y.jpg',
     ]
     textureSrc.forEach((src, i) => {
         let texture = gl.createTexture();
@@ -839,12 +846,12 @@ function initTexture2D() {
 
 function initTextureCubemap() {
     const textureCubemapSrc = [
-        ['texture/cubemap-sky/positive-x.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_X],
-        ['texture/cubemap-sky/negative-x.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
-        ['texture/cubemap-sky/positive-y.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
-        ['texture/cubemap-sky/negative-y.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
-        ['texture/cubemap-sky/positive-z.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
-        ['texture/cubemap-sky/negative-z.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
+        ['texture/cubemap-mountain/positive-x.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_X],
+        ['texture/cubemap-mountain/negative-x.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
+        ['texture/cubemap-mountain/positive-y.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
+        ['texture/cubemap-mountain/negative-y.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
+        ['texture/cubemap-mountain/positive-z.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
+        ['texture/cubemap-mountain/negative-z.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
     ];
 
     let textureCubemap = gl.createTexture();
