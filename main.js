@@ -5,8 +5,8 @@ const vertexShaderSrc = `
 precision mediump float;
 
 attribute vec3 aPosition, aNormal;
-attribute vec3 aMatAmbient, aMatDiffuse, aMatSpecular;
-attribute float aMatShininess;
+uniform vec3 uMatAmbient, uMatDiffuse, uMatSpecular;
+uniform float uMatShininess;
 
 uniform mat4 uMV, uP, uN;
 
@@ -23,10 +23,10 @@ void main() {
 
     vNormal = vec3(uN * vec4(aNormal, 0.0));
 
-    matAmbient   = aMatAmbient  ;
-    matDiffuse   = aMatDiffuse  ;
-    matSpecular  = aMatSpecular ;
-    matShininess = aMatShininess;
+    matAmbient   = uMatAmbient  ;
+    matDiffuse   = uMatDiffuse  ;
+    matSpecular  = uMatSpecular ;
+    matShininess = uMatShininess;
 
     gl_Position = uP * p;
 }
@@ -123,13 +123,7 @@ class Primitive extends EmptyNode {
         this.matAmbient = ambient;
         this.matDiffuse = diffuse;
         this.matSpecular = specular;
-        this.matShininess = [shininess];
-        // XXX: expand material params for each vertex, since we need to use attribute here
-        Primitive.attributes.forEach(({dat}) => {
-            if (dat.startsWith('mat')) {
-                this[dat] = arrayRepeat(this[dat], this.numVertices);
-            }
-        });
+        this.matShininess = shininess;
         this.updated = false;
     }
 
@@ -163,6 +157,11 @@ class Primitive extends EmptyNode {
         gl.uniformMatrix4fv(shader.uP, false, camera.P);
         gl.uniformMatrix4fv(shader.uN, false, mvToN(mv));
 
+        gl.uniform3fv(shader.uMatAmbient, this.matAmbient);
+        gl.uniform3fv(shader.uMatDiffuse, this.matDiffuse);
+        gl.uniform3fv(shader.uMatSpecular, this.matSpecular);
+        gl.uniform1f(shader.uMatShininess, this.matShininess);
+
         gl.drawArrays(gl.TRIANGLES, 0, this.numVertices);
 
         this.children.forEach(p => p.draw(M1));
@@ -185,10 +184,6 @@ class Primitive extends EmptyNode {
 Primitive.attributes = [
     {att: 'aPosition',     buf: 'bPosition',     dat: 'position',     n: 3},
     {att: 'aNormal',       buf: 'bNormal',       dat: 'normal',       n: 3},
-    {att: 'aMatAmbient',   buf: 'bMatAmbient',   dat: 'matAmbient',   n: 3},
-    {att: 'aMatDiffuse',   buf: 'bMatDiffuse',   dat: 'matDiffuse',   n: 3},
-    {att: 'aMatSpecular',  buf: 'bMatSpecular',  dat: 'matSpecular',  n: 3},
-    {att: 'aMatShininess', buf: 'bMatShininess', dat: 'matShininess', n: 1},
 ];
 
 class Cube extends Primitive {
@@ -272,7 +267,7 @@ class Cube extends Primitive {
             0, 1, 0,
             0, 1, 0,
         ];
-        this.setMaterial([1, 1, 1], [1, 1, 1], [1, 1, 1], 3); // XXX: set a default material
+        this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
     }
 }
 
@@ -285,7 +280,7 @@ class Cylinder extends Primitive {
         for (let i = 0, h = -height / 2; h <= height / 2; i++ , h += dh) {
             this.add_circle(top_r + dr * i, h);
         }
-        this.setMaterial([1, 1, 1], [1, 1, 1], [1, 1, 1], 3); // XXX: set a default material
+        this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
     }
 
     // add a circle with radius of r and color of c at plane of y
@@ -340,7 +335,7 @@ class Sphere extends Primitive {
                 }
             }
         }
-        this.setMaterial([1, 1, 1], [1, 1, 1], [1, 1, 1], 3); // XXX: set a default material
+        this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
     }
 
     add_vertices(vs) {
@@ -373,7 +368,7 @@ class Model extends Primitive {
             this.numVertices += 3;
         }
         this.position.map(x => x*2);
-        this.setMaterial([1, 1, 1], [1, 1, 1], [1, 1, 1], 3); // XXX: set a default material
+        this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
     }
 }
 
@@ -407,7 +402,7 @@ class Light extends Sphere {
 
     constructor() {
         super(0.1);
-        this.setMaterial([10, 10, 10], [0, 0, 0], [0, 0, 0], 3);
+        this.setMaterial(v3(10, 10, 10), v3(0, 0, 0), v3(0, 0, 0), 3);
 
         this.ambient = v3(0.2, 0.2, 0.2);
         this.diffuse = v3(0.7, 0.7, 0.7);
@@ -435,6 +430,8 @@ function main() {
         'uMV', 'uP', 'uN',
         'lightPos',
         'lightAmbient', 'lightDiffuse', 'lightSpecular',
+        'uMatAmbient', 'uMatDiffuse', 'uMatSpecular',
+        'uMatShininess',
     ].forEach(v => shader[v] = gl.getUniformLocation(shader, v));
 
     root = new EmptyNode();
@@ -462,7 +459,7 @@ function main() {
 
 // get params and create a new primitive with random color
 function createPrimitive(name) {
-    const getRandomColor = () => [Math.random(), Math.random(), Math.random()];
+    const getRandomColor = () => v3(Math.random(), Math.random(), Math.random());
     if (name == 'cube') {
         let s = window.prompt('Size of cube', '1');
         let c = getRandomColor();
@@ -565,11 +562,11 @@ function scale(obj, axis, step) {
 function setColor() {
     if (typeof curr.setMaterial !== 'undefined') {
         let v = document.getElementById('colorpicker').value;
-        let c = [
+        let c = v3(
             Number.parseInt(v.substr(1,2),16) / 255.0,
             Number.parseInt(v.substr(3,2),16) / 255.0,
             Number.parseInt(v.substr(5,2),16) / 255.0,
-        ];
+        );
         curr.setMaterial(c, c, c, 3);
     }
 }
@@ -577,11 +574,11 @@ function setColor() {
 // set light color
 function setLightColor() {
     let v = document.getElementById('colorpicker-light').value;
-    let c = [
+    let c = v3(
         Number.parseInt(v.substr(1,2),16) / 255.0,
         Number.parseInt(v.substr(3,2),16) / 255.0,
         Number.parseInt(v.substr(5,2),16) / 255.0,
-    ];
+    );
     light.setMaterial(c.map(x=>x*10), c, c, 3);
     light.ambient = c.map(x=>x*0.2);
     light.diffuse = c.map(x=>x*0.7);
@@ -793,13 +790,4 @@ function mul_m(m1, m2) {
 // degree -> radian
 function toRadian(x) {
     return glMatrix.toRadian(x);
-}
-
-// ([1,2,3], 3) -> [1,2,3,1,2,3,1,2,3]
-function arrayRepeat(arr, n) {
-    let a = [];
-    for (let i = 0; i < n; i++) {
-        a = a.concat(arr);
-    }
-    return a;
 }
