@@ -49,12 +49,12 @@ varying vec3 vVertPos; // in eye space
 varying vec3 vNormal;
 
 void main() {
-    if (uRenderMode == 1) {
+    if (uRenderMode == 2) {
         vec3 normal = normalize(vNormal);
         vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
         reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
         gl_FragColor = textureCube(uTextureCubemap, reflectDir);
-    } else {
+    } else if (uRenderMode == 1) {
         vec3 ambient = matAmbient * lightAmbient;
 
         vec3 normal = normalize(vNormal);
@@ -83,8 +83,6 @@ var curr; // current primitive
 var controllerMode = translate; // a function in {translate, rotate, scale}
 var controllerAxis = 0; // current axis 0: x, 1: y, 2: z
 
-var renderMode = 1;
-
 class EmptyNode {
     parent = null;
     children = [];
@@ -112,6 +110,7 @@ class Primitive extends EmptyNode {
     matDiffuse = [];   // material diffuse
     matSpecular = [];  // material specular
     matShininess = []; // material shininess
+    renderMode = 1;
 
     updated = false; // buffer updated?
     bPosition;     // vbo for position of vertices
@@ -168,7 +167,7 @@ class Primitive extends EmptyNode {
         gl.uniform3fv(shader.uMatDiffuse, this.matDiffuse);
         gl.uniform3fv(shader.uMatSpecular, this.matSpecular);
         gl.uniform1f(shader.uMatShininess, this.matShininess);
-        gl.uniform1i(shader.uRenderMode, renderMode);
+        gl.uniform1i(shader.uRenderMode, this.renderMode);
 
         gl.drawArrays(gl.TRIANGLES, 0, this.numVertices);
 
