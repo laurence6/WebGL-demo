@@ -6,7 +6,7 @@ precision mediump float;
 
 attribute vec3 aPosition, aNormal;
 
-uniform mat4 uMV, uP, uN;
+uniform mat4 uM, uV, uP, uN;
 uniform vec3 uMatAmbient, uMatDiffuse, uMatSpecular;
 uniform float uMatShininess;
 
@@ -18,7 +18,7 @@ varying float matShininess;
 void main() {
     gl_PointSize = 4.0;
 
-    vec4 p = uMV * vec4(aPosition, 1.0);
+    vec4 p = uV * uM * vec4(aPosition, 1.0);
     vVertPos = vec3(p);
 
     vNormal = vec3(uN * vec4(aNormal, 0.0));
@@ -36,10 +36,11 @@ void main() {
 const fragmentShaderSrc = `
 precision mediump float;
 
-uniform mat4 uMV, uP, uN;
+uniform mat4 uM, uV, uP, uN, uVInv;
 uniform vec3 lightPos; // in eye space
 uniform vec3 lightAmbient, lightDiffuse, lightSpecular;
 uniform samplerCube uTextureCubemap;
+uniform int uRenderMode;
 
 varying vec3 matAmbient, matDiffuse, matSpecular;
 varying float matShininess;
@@ -48,18 +49,25 @@ varying vec3 vVertPos; // in eye space
 varying vec3 vNormal;
 
 void main() {
-    vec3 ambient = matAmbient * lightAmbient;
+    if (uRenderMode == 1) {
+        vec3 normal = normalize(vNormal);
+        vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
+        reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
+        gl_FragColor = textureCube(uTextureCubemap, reflectDir);
+    } else {
+        vec3 ambient = matAmbient * lightAmbient;
 
-    vec3 normal = normalize(vNormal);
-    vec3 lightDir = normalize(lightPos - vVertPos);
-    vec3 diffuse = matDiffuse * lightDiffuse * max(dot(normal, lightDir), 0.0);
+        vec3 normal = normalize(vNormal);
+        vec3 lightDir = normalize(lightPos - vVertPos);
 
-    vec3 reflectDir = reflect(-lightDir, normal);
-    vec3 vertDir = normalize(-vVertPos);
-    vec3 specular = matSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), matShininess);
+        vec3 diffuse = matDiffuse * lightDiffuse * max(dot(normal, lightDir), 0.0);
 
-    //gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
-    gl_FragColor = textureCube(uTextureCubemap, reflectDir);
+        vec3 reflectDir = reflect(-lightDir, normal);
+        vec3 vertDir = normalize(-vVertPos);
+        vec3 specular = matSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), matShininess);
+
+        gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
+    }
 }
 `;
 
@@ -74,6 +82,8 @@ var curr; // current primitive
 
 var controllerMode = translate; // a function in {translate, rotate, scale}
 var controllerAxis = 0; // current axis 0: x, 1: y, 2: z
+
+var renderMode = 1;
 
 class EmptyNode {
     parent = null;
@@ -151,15 +161,14 @@ class Primitive extends EmptyNode {
         });
 
         // upload data to uniform variables
-        let mv = mul_m(camera.V, M1);
-        gl.uniformMatrix4fv(shader.uMV, false, mv);
-        gl.uniformMatrix4fv(shader.uP, false, camera.P);
-        gl.uniformMatrix4fv(shader.uN, false, mvToN(mv));
+        gl.uniformMatrix4fv(shader.uM, false, M1);
+        gl.uniformMatrix4fv(shader.uN, false, mvToN(mul_m(camera.V, M1)));
 
         gl.uniform3fv(shader.uMatAmbient, this.matAmbient);
         gl.uniform3fv(shader.uMatDiffuse, this.matDiffuse);
         gl.uniform3fv(shader.uMatSpecular, this.matSpecular);
         gl.uniform1f(shader.uMatShininess, this.matShininess);
+        gl.uniform1i(shader.uRenderMode, renderMode);
 
         gl.drawArrays(gl.TRIANGLES, 0, this.numVertices);
 
@@ -415,6 +424,11 @@ class Camera extends EmptyNode {
 
         // view matrix
         mat4.invert(this.V, this.transform);
+
+        // upload data to uniform variables
+        gl.uniformMatrix4fv(shader.uV, false, this.V);
+        gl.uniformMatrix4fv(shader.uP, false, this.P);
+        gl.uniformMatrix4fv(shader.uVInv, false, inv_m(this.V));
     }
 }
 
@@ -450,12 +464,13 @@ function main() {
 
     Primitive.setupShader();
     [
-        'uMV', 'uP', 'uN',
+        'uM', 'uV', 'uP', 'uN', 'uVInv',
         'uMatAmbient', 'uMatDiffuse', 'uMatSpecular',
         'uMatShininess',
         'lightPos',
         'lightAmbient', 'lightDiffuse', 'lightSpecular',
         'uTextureCubemap',
+        'uRenderMode',
     ].forEach(v => shader[v] = gl.getUniformLocation(shader, v));
 
     initTextureCubemap();
@@ -876,6 +891,12 @@ function normalize(v1) {
 function mul_m(m1, m2) {
     let m = mat4.create();
     return mat4.mul(m, m1, m2);
+}
+
+// matrix inverse
+function inv_m(m1) {
+    let m = mat4.create();
+    return mat4.invert(m, m1);
 }
 
 // degree -> radian
