@@ -4,16 +4,14 @@
 const vertexShaderSrc = `
 precision mediump float;
 
-attribute vec3 aPosition, aNormal;
-
 uniform mat4 uM, uV, uP, uN;
-uniform vec3 uMatAmbient, uMatDiffuse, uMatSpecular;
-uniform float uMatShininess;
+
+attribute vec3 aPosition, aNormal;
+attribute vec2 aTexCoords;
 
 varying vec3 vVertPos; // in eye space
 varying vec3 vNormal;
-varying vec3 matAmbient, matDiffuse, matSpecular;
-varying float matShininess;
+varying vec2 vTexCoords;
 
 void main() {
     gl_PointSize = 4.0;
@@ -23,10 +21,7 @@ void main() {
 
     vNormal = vec3(uN * vec4(aNormal, 0.0));
 
-    matAmbient   = uMatAmbient  ;
-    matDiffuse   = uMatDiffuse  ;
-    matSpecular  = uMatSpecular ;
-    matShininess = uMatShininess;
+    vTexCoords = aTexCoords;
 
     gl_Position = uP * p;
 }
@@ -37,36 +32,44 @@ const fragmentShaderSrc = `
 precision mediump float;
 
 uniform mat4 uM, uV, uP, uN, uVInv;
+
+uniform vec3 uMatAmbient, uMatDiffuse, uMatSpecular;
+uniform float uMatShininess;
+
 uniform vec3 lightPos; // in eye space
 uniform vec3 lightAmbient, lightDiffuse, lightSpecular;
-uniform samplerCube uTextureCubemap;
-uniform int uRenderMode;
 
-varying vec3 matAmbient, matDiffuse, matSpecular;
-varying float matShininess;
+uniform int uRenderMode;
+uniform sampler2D uTextures[6];
+uniform samplerCube uTextureCubemap;
 
 varying vec3 vVertPos; // in eye space
 varying vec3 vNormal;
+varying vec2 vTexCoords;
 
 void main() {
-    if (uRenderMode == 2) {
-        vec3 normal = normalize(vNormal);
-        vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
-        reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
-        gl_FragColor = textureCube(uTextureCubemap, reflectDir);
-    } else if (uRenderMode == 1) {
-        vec3 ambient = matAmbient * lightAmbient;
+    if (uRenderMode == 1) {
+        vec3 ambient = uMatAmbient * lightAmbient;
 
         vec3 normal = normalize(vNormal);
         vec3 lightDir = normalize(lightPos - vVertPos);
 
-        vec3 diffuse = matDiffuse * lightDiffuse * max(dot(normal, lightDir), 0.0);
+        vec3 diffuse = uMatDiffuse * lightDiffuse * max(dot(normal, lightDir), 0.0);
 
         vec3 reflectDir = reflect(-lightDir, normal);
         vec3 vertDir = normalize(-vVertPos);
-        vec3 specular = matSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), matShininess);
+        vec3 specular = uMatSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), uMatShininess);
 
         gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
+    } else if (uRenderMode == 2) {
+        gl_FragColor = texture2D(uTextures[1], vTexCoords);
+    } else if (uRenderMode == 3) {
+        vec3 normal = normalize(vNormal);
+        vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
+        reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
+        gl_FragColor = textureCube(uTextureCubemap, reflectDir);
+    } else {
+        discard;
     }
 }
 `;
@@ -102,19 +105,21 @@ class EmptyNode {
 }
 
 class Primitive extends EmptyNode {
-    numVertices = 0;   // number of vertices
+    numVertices = 0; // number of vertices
 
-    position = [];     // position of vertices
-    normal = [];       // normal of vertices
-    matAmbient = [];   // material ambient
-    matDiffuse = [];   // material diffuse
-    matSpecular = [];  // material specular
-    matShininess = []; // material shininess
-    renderMode = 1;
+    position = [];   // position of vertices
+    normal = [];     // normal of vertices
+    texCoords = [];  // texture coordinates of vertices
+    matAmbient;      // material ambient
+    matDiffuse;      // material diffuse
+    matSpecular;     // material specular
+    matShininess;    // material shininess
+    renderMode = 1;  // render mode 1: no texture, 2: texture, 3: cubemap
 
     updated = false; // buffer updated?
-    bPosition;     // vbo for position of vertices
-    bNormal;       // vbo for normal of vertices
+    bPosition;       // vbo for position of vertices
+    bNormal;         // vbo for normal of vertices
+    bTexCoords;      // vbo for texture coordinates of vertices
 
     constructor() {
         super();
@@ -180,7 +185,11 @@ class Primitive extends EmptyNode {
     // upload vertices data to buffer
     uploadData() {
         if (!this.updated) {
-            Primitive.attributes.forEach(({buf, dat}) => {
+            Primitive.attributes.forEach(({buf, dat, n}) => {
+                if (this[dat].length == 0) {
+                    this[dat] = new Array(this.numVertices * n);
+                    this[dat].fill(0);
+                }
                 gl.bindBuffer(gl.ARRAY_BUFFER, this[buf]);
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this[dat]), gl.STATIC_DRAW);
             });
@@ -231,8 +240,9 @@ class Primitive extends EmptyNode {
 // data array
 // number of components per element
 Primitive.attributes = [
-    {att: 'aPosition',     buf: 'bPosition',     dat: 'position',     n: 3},
-    {att: 'aNormal',       buf: 'bNormal',       dat: 'normal',       n: 3},
+    {att: 'aPosition',  buf: 'bPosition',  dat: 'position',  n: 3},
+    {att: 'aNormal',    buf: 'bNormal',    dat: 'normal',    n: 3},
+    {att: 'aTexCoords', buf: 'bTexCoords', dat: 'texCoords', n: 2},
 ];
 
 class Plane extends Primitive {
@@ -340,6 +350,44 @@ class Cube extends Primitive {
             0, 1, 0,
             0, 1, 0,
             0, 1, 0,
+        ];
+        this.texCoords = [
+            0, 0,
+            1, 0,
+            1, 1,
+            1, 1,
+            0, 1,
+            0, 0,
+            0, 0,
+            1, 0,
+            1, 1,
+            1, 1,
+            0, 1,
+            0, 0,
+            0, 0,
+            1, 0,
+            1, 1,
+            1, 1,
+            0, 1,
+            0, 0,
+            0, 0,
+            1, 0,
+            1, 1,
+            1, 1,
+            0, 1,
+            0, 0,
+            0, 0,
+            1, 0,
+            1, 1,
+            1, 1,
+            0, 1,
+            0, 0,
+            0, 0,
+            1, 0,
+            1, 1,
+            1, 1,
+            0, 1,
+            0, 0,
         ];
         this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
     }
@@ -510,10 +558,12 @@ function main() {
         'uMatShininess',
         'lightPos',
         'lightAmbient', 'lightDiffuse', 'lightSpecular',
-        'uTextureCubemap',
         'uRenderMode',
+        'uTextures',
+        'uTextureCubemap',
     ].forEach(v => shader[v] = gl.getUniformLocation(shader, v));
 
+    initTexture2D();
     initTextureCubemap();
 
     initScene();
@@ -542,40 +592,20 @@ function initScene() {
     mat4.fromTranslation(light.transform, v3(0, 12, 0));
     curr = root;
 
-    return;
     {
         let _parent = new EmptyNode();
         add(_parent);
 
         let c = getRandomColor();
 
-        add(new Cube(1));
-        scale(curr, 1, -1);
-        scale(curr, 0, 50);
-        scale(curr, 2, 50);
-        c = getRandomColor();
-        curr.setMaterial(c, c, c, 4);
-        curr = _parent;
+        //add(new Plane(10));
+        //curr.renderMode = 3;
+        //curr = _parent;
 
-        add(new Model());
-        translate(curr, 1, 2);
-        translate(curr, 0, -2);
-        translate(curr, 2, -2);
-        rotate(curr, 1, 12);
-        c = getRandomColor();
-        curr.setMaterial(c, c, c, 4);
-        curr = _parent;
+        //curr = root;
 
-        add(new Cube(1));
-        translate(curr, 1, 1);
-        translate(curr, 0, 3);
-        translate(curr, 2, 1);
-        rotate(curr, 1, 6);
-        c = getRandomColor();
-        curr.setMaterial(c, c, c, 4);
-        curr = _parent;
-
-        curr = root;
+        add(new Cube(6));
+        curr.renderMode=2;
     }
 }
 
@@ -784,8 +814,6 @@ function initShaders() {
     gl.useProgram(shader); // use the shader program
 }
 
-var texture = [];
-
 function initTexture2D() {
     const textureSrc = [
         'texture/cubemap-debug/positive-x.jpg',
@@ -795,19 +823,20 @@ function initTexture2D() {
         'texture/cubemap-debug/positive-z.jpg',
         'texture/cubemap-debug/negative-z.jpg',
     ]
-
     textureSrc.forEach((src, i) => {
-        texture.push(gl.createTexture());
-        texture[i].image = new Image();
-        texture[i].image.addEventListener('load', () => {
-            gl.bindTexture(gl.TEXTURE_2D, texture[i]);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture[i].image);
+        let texture = gl.createTexture();
+        let img = new Image();
+        img.addEventListener('load', () => {
+            gl.activeTexture(gl['TEXTURE'+(i+1)]);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.bindTexture(gl.TEXTURE_2D, null);
         });
-        texture[i].image.src = src;
-    })
+        img.src = src;
+    });
+
+    gl.uniform1iv(shader.uTextures, textureSrc.map((v, i) => i+1));
 }
 
 function initTextureCubemap() {
@@ -821,12 +850,14 @@ function initTextureCubemap() {
     ];
 
     let textureCubemap = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, textureCubemap);
 
     textureCubemapSrc.forEach(([src, dim, type]) => {
         let img = new Image();
         gl.texImage2D(type, 0, gl.RGBA, dim, dim, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         img.addEventListener('load', () => {
+            gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, textureCubemap);
             gl.texImage2D(type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
             gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
