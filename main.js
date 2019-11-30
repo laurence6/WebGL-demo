@@ -637,7 +637,7 @@ function initScene() {
     }
 }
 
-function getRandomColor() { v3(Math.random(), Math.random(), Math.random()); }
+function getRandomColor() { return v3(Math.random(), Math.random(), Math.random()); }
 
 // get params and create a new primitive with random color
 function createPrimitive(name) {
