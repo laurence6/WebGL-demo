@@ -75,6 +75,11 @@ void main() {
         vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
         reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
         gl_FragColor = textureCube(uTextureCubemap, reflectDir);
+    } else if (uRenderMode == 4) {
+        vec3 normal = normalize(vNormal);
+        vec3 reflectDir = normalize(vVertPos);
+        reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
+        gl_FragColor = textureCube(uTextureCubemap, reflectDir);
     } else {
         discard;
     }
