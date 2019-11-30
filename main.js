@@ -125,6 +125,48 @@ class Primitive extends EmptyNode {
         Primitive.attributes.forEach(({buf}) => this[buf] = gl.createBuffer());
     }
 
+    _drawMode = gl.TRIANGLES;
+    get drawMode() { return this._drawMode }
+    set drawMode(value) {
+        switch (value) {
+            case gl.POINTS:
+                break;
+            case gl.LINES:
+                if (this._drawMode == gl.TRIANGLES) {
+                    let _position = [];
+                    let _normal = [];
+                    for (let i = 0; i < this.position.length; i += 9) {
+                        [i, i+3, i+3, i+6, i+6, i].forEach(o => {
+                            _position.push(this.position[o], this.position[o+1], this.position[o+2]);
+                            _normal.push(this.normal[o], this.normal[o+1], this.normal[o+2]);
+                        });
+                    }
+                    this.position = _position;
+                    this.normal = _normal;
+                    this.numVertices *= 2;
+                    this.updated = false;
+                }
+                break;
+            case gl.TRIANGLES:
+                if (this._drawMode == gl.LINES) {
+                    let _position = [];
+                    let _normal = [];
+                    for (let i = 0; i < this.position.length; i += 18) {
+                        [i, i+3, i+9].forEach(o => {
+                            _position.push(this.position[o], this.position[o+1], this.position[o+2]);
+                            _normal.push(this.normal[o], this.normal[o+1], this.normal[o+2]);
+                        });
+                    }
+                    this.position = _position;
+                    this.normal = _normal;
+                    this.numVertices /= 2;
+                    this.updated = false;
+                }
+                break;
+        }
+        this._drawMode = value;
+    }
+
     // set material
     // NOTE: currently we assume an object has an uniform material
     setMaterial(ambient, diffuse, specular, shininess) {
@@ -169,7 +211,7 @@ class Primitive extends EmptyNode {
         gl.uniform1f(shader.uMatShininess, this.matShininess);
         gl.uniform1i(shader.uRenderMode, this.renderMode);
 
-        gl.drawArrays(gl.TRIANGLES, 0, this.numVertices);
+        gl.drawArrays(this.drawMode, 0, this.numVertices);
 
         this.children.forEach(p => p.draw(M1));
     }
