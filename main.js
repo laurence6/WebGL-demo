@@ -650,21 +650,27 @@ function initShaders() {
     gl.useProgram(shader); // use the shader program
 }
 
+const cubemapTextureSrc = [
+    ['texture/positive-x.png', gl.TEXTURE_CUBE_MAP_POSITIVE_X],
+    ['texture/negative-x.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
+    ['texture/positive-y.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
+    ['texture/negative-y.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
+    ['texture/negative-z.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
+    ['texture/positive-z.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
+];
+
+var cubemapTexture;
+
 function initCubemapTexture() {
-    const texture = [
-        ['texture/positive-x.png', gl.TEXTURE_CUBE_MAP_POSITIVE_X],
-        ['texture/negative-x.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
-        ['texture/positive-y.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
-        ['texture/negative-y.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
-        ['texture/negative-z.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
-        ['texture/positive-z.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
-    ];
-    texture.forEach(([src, type]) => {
+    cubemapTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemapTexture);
+
+    cubemapTextureSrc.forEach(([src, type]) => {
         gl.texImage2D(type, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         let img = new Image();
         img.src = src;
         image.addEventListener('load', function() {
-            gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemapTexture);
             gl.texImage2D(target, level, internalFormat, format, type, image);
             gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
         });
