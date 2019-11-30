@@ -475,6 +475,17 @@ function main() {
 
     initTextureCubemap();
 
+    initScene();
+
+    // listen on events
+    window.addEventListener('resize', initGL, false);
+    document.addEventListener('mousedown', onMouseDown, false);
+    document.addEventListener('keydown', onKeyDown, false);
+
+    setInterval(drawScene, 30);
+}
+
+function initScene() {
     root = new EmptyNode();
     root.parent = root;
     mat4.fromTranslation(root.transform, v3(0, -1, 0)); // NOTE: Check Primitive's constructor
@@ -490,17 +501,47 @@ function main() {
     mat4.fromTranslation(light.transform, v3(0, 12, 0));
     curr = root;
 
-    // listen on events
-    window.addEventListener('resize', initGL, false);
-    document.addEventListener('mousedown', onMouseDown, false);
-    document.addEventListener('keydown', onKeyDown, false);
+    return;
+    {
+        let _parent = new EmptyNode();
+        add(_parent);
 
-    setInterval(drawScene, 30);
+        let c = getRandomColor();
+
+        add(new Cube(1));
+        scale(curr, 1, -1);
+        scale(curr, 0, 50);
+        scale(curr, 2, 50);
+        c = getRandomColor();
+        curr.setMaterial(c, c, c, 4);
+        curr = _parent;
+
+        add(new Model());
+        translate(curr, 1, 2);
+        translate(curr, 0, -2);
+        translate(curr, 2, -2);
+        rotate(curr, 1, 12);
+        c = getRandomColor();
+        curr.setMaterial(c, c, c, 4);
+        curr = _parent;
+
+        add(new Cube(1));
+        translate(curr, 1, 1);
+        translate(curr, 0, 3);
+        translate(curr, 2, 1);
+        rotate(curr, 1, 6);
+        c = getRandomColor();
+        curr.setMaterial(c, c, c, 4);
+        curr = _parent;
+
+        curr = root;
+    }
 }
+
+const getRandomColor = () => v3(Math.random(), Math.random(), Math.random());
 
 // get params and create a new primitive with random color
 function createPrimitive(name) {
-    const getRandomColor = () => v3(Math.random(), Math.random(), Math.random());
     if (name == 'plane') {
         let s = window.prompt('Size of plane', '1');
         let c = getRandomColor();
