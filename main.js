@@ -747,12 +747,12 @@ var texture = [];
 
 function initTexture2D() {
     const textureSrc = [
-        'texture/positive-x.png',
-        'texture/negative-x.png',
-        'texture/positive-y.png',
-        'texture/negative-y.png',
-        'texture/positive-z.png',
-        'texture/negative-z.png',
+        'texture/cubemap-debug/positive-x.jpg',
+        'texture/cubemap-debug/negative-x.jpg',
+        'texture/cubemap-debug/positive-y.jpg',
+        'texture/cubemap-debug/negative-y.jpg',
+        'texture/cubemap-debug/positive-z.jpg',
+        'texture/cubemap-debug/negative-z.jpg',
     ]
 
     textureSrc.forEach((src, i) => {
@@ -771,20 +771,20 @@ function initTexture2D() {
 
 function initTextureCubemap() {
     const textureCubemapSrc = [
-        ['texture/positive-x.png', gl.TEXTURE_CUBE_MAP_POSITIVE_X],
-        ['texture/negative-x.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
-        ['texture/positive-y.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
-        ['texture/negative-y.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
-        ['texture/positive-z.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
-        ['texture/negative-z.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
+        ['texture/cubemap-sky/positive-x.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_X],
+        ['texture/cubemap-sky/negative-x.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
+        ['texture/cubemap-sky/positive-y.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
+        ['texture/cubemap-sky/negative-y.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
+        ['texture/cubemap-sky/positive-z.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
+        ['texture/cubemap-sky/negative-z.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
     ];
 
     let textureCubemap = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, textureCubemap);
 
-    textureCubemapSrc.forEach(([src, type]) => {
+    textureCubemapSrc.forEach(([src, dim, type]) => {
         let img = new Image();
-        gl.texImage2D(type, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(type, 0, gl.RGBA, dim, dim, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         img.addEventListener('load', () => {
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, textureCubemap);
             gl.texImage2D(type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
