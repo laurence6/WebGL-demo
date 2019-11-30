@@ -138,32 +138,30 @@ class Primitive extends EmptyNode {
                 break;
             case gl.LINES:
                 if (this._drawMode == gl.TRIANGLES) {
-                    let _position = [];
-                    let _normal = [];
-                    for (let i = 0; i < this.position.length; i += 9) {
-                        [i, i+3, i+3, i+6, i+6, i].forEach(o => {
-                            _position.push(this.position[o], this.position[o+1], this.position[o+2]);
-                            _normal.push(this.normal[o], this.normal[o+1], this.normal[o+2]);
-                        });
-                    }
-                    this.position = _position;
-                    this.normal = _normal;
+                    Primitive.attributes.forEach(({dat, n}) => {
+                        let newdat = [];
+                        for (let i = 0; i < this.position.length; i += 9) { // FIXME: Assume n == 3
+                            [i, i+3, i+3, i+6, i+6, i].forEach(o => {
+                                newdat.push(this[dat][o], this[dat][o+1], this[dat][o+2]);
+                            });
+                        }
+                        this[dat] = newdat;
+                    });
                     this.numVertices *= 2;
                     this.updated = false;
                 }
                 break;
             case gl.TRIANGLES:
                 if (this._drawMode == gl.LINES) {
-                    let _position = [];
-                    let _normal = [];
-                    for (let i = 0; i < this.position.length; i += 18) {
-                        [i, i+3, i+9].forEach(o => {
-                            _position.push(this.position[o], this.position[o+1], this.position[o+2]);
-                            _normal.push(this.normal[o], this.normal[o+1], this.normal[o+2]);
-                        });
-                    }
-                    this.position = _position;
-                    this.normal = _normal;
+                    Primitive.attributes.forEach(({dat, n}) => {
+                        let newdat = [];
+                        for (let i = 0; i < this.position.length; i += 18) { // FIXME: Assume n == 3
+                            [i, i+3, i+9].forEach(o => {
+                                newdat.push(this[dat][o], this[dat][o+1], this[dat][o+2]);
+                            });
+                        }
+                        this[dat] = newdat;
+                    });
                     this.numVertices /= 2;
                     this.updated = false;
                 }
