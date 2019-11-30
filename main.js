@@ -39,7 +39,7 @@ precision mediump float;
 uniform mat4 uMV, uP, uN;
 uniform vec3 lightPos; // in eye space
 uniform vec3 lightAmbient, lightDiffuse, lightSpecular;
-uniform samplerCube uCubemapTexture;
+uniform samplerCube uTextureCubemap;
 
 varying vec3 matAmbient, matDiffuse, matSpecular;
 varying float matShininess;
@@ -59,7 +59,7 @@ void main() {
     vec3 specular = matSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), matShininess);
 
     //gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
-    gl_FragColor = textureCube(uCubemapTexture, reflectDir);
+    gl_FragColor = textureCube(uTextureCubemap, reflectDir);
 }
 `;
 
@@ -430,10 +430,10 @@ function main() {
         'uMatShininess',
         'lightPos',
         'lightAmbient', 'lightDiffuse', 'lightSpecular',
-        'uCubemapTexture',
+        'uTextureCubemap',
     ].forEach(v => shader[v] = gl.getUniformLocation(shader, v));
 
-    initCubemapTexture();
+    initTextureCubemap();
 
     root = new EmptyNode();
     root.parent = root;
@@ -654,8 +654,34 @@ function initShaders() {
     gl.useProgram(shader); // use the shader program
 }
 
-function initCubemapTexture() {
-    let cubemapTextureSrc = [
+var texture = [];
+
+function initTexture2D() {
+    const textureSrc = [
+        'texture/positive-x.png',
+        'texture/negative-x.png',
+        'texture/positive-y.png',
+        'texture/negative-y.png',
+        'texture/positive-z.png',
+        'texture/negative-z.png',
+    ]
+
+    textureSrc.forEach((src, i) => {
+        texture.push(gl.createTexture());
+        texture[i].image = new Image();
+        texture[i].image.addEventListener('load', () => {
+            gl.bindTexture(gl.TEXTURE_2D, texture[i]);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture[i].image);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+        });
+        texture[i].image.src = src;
+    })
+}
+
+function initTextureCubemap() {
+    const textureCubemapSrc = [
         ['texture/positive-x.png', gl.TEXTURE_CUBE_MAP_POSITIVE_X],
         ['texture/negative-x.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
         ['texture/positive-y.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
@@ -664,14 +690,14 @@ function initCubemapTexture() {
         ['texture/negative-z.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
     ];
 
-    let cubemapTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemapTexture);
+    let textureCubemap = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, textureCubemap);
 
-    cubemapTextureSrc.forEach(([src, type]) => {
+    textureCubemapSrc.forEach(([src, type]) => {
         let img = new Image();
         gl.texImage2D(type, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-        img.addEventListener('load', function() {
-            gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemapTexture);
+        img.addEventListener('load', () => {
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, textureCubemap);
             gl.texImage2D(type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
             gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
         });
@@ -682,7 +708,7 @@ function initCubemapTexture() {
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
 
-    gl.uniform1i(shader.uCubemapTexture, 0);
+    gl.uniform1i(shader.uTextureCubemap, 0);
 }
 
 // handle mouse event
