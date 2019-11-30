@@ -185,6 +185,31 @@ Primitive.attributes = [
     {att: 'aNormal',       buf: 'bNormal',       dat: 'normal',       n: 3},
 ];
 
+class Plane extends Primitive {
+    constructor(size) {
+        super();
+        this.numVertices = 6;
+        let _0 = -0.5 * size, _1 = 0.5 * size;
+        this.position = [
+            _0, _1, _1,
+            _0, _1, _0,
+            _1, _1, _0,
+            _1, _1, _0,
+            _1, _1, _1,
+            _0, _1, _1,
+        ];
+        this.normal = [
+            0, 1, 0,
+            0, 1, 0,
+            0, 1, 0,
+            0, 1, 0,
+            0, 1, 0,
+            0, 1, 0,
+        ];
+        this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
+    }
+}
+
 class Cube extends Primitive {
     constructor(size) {
         super();
@@ -461,7 +486,15 @@ function main() {
 // get params and create a new primitive with random color
 function createPrimitive(name) {
     const getRandomColor = () => v3(Math.random(), Math.random(), Math.random());
-    if (name == 'cube') {
+    if (name == 'plane') {
+        let s = window.prompt('Size of plane', '1');
+        let c = getRandomColor();
+        if (s && c) {
+            s = parseFloat(s);
+            add(new Plane(s));
+            curr.setMaterial(c, c, c, 3);
+        }
+    } else if (name == 'cube') {
         let s = window.prompt('Size of cube', '1');
         let c = getRandomColor();
         if (s && c) {
