@@ -5,10 +5,10 @@ const vertexShaderSrc = `
 precision mediump float;
 
 attribute vec3 aPosition, aNormal;
-uniform vec3 uMatAmbient, uMatDiffuse, uMatSpecular;
-uniform float uMatShininess;
 
 uniform mat4 uMV, uP, uN;
+uniform vec3 uMatAmbient, uMatDiffuse, uMatSpecular;
+uniform float uMatShininess;
 
 varying vec3 vVertPos; // in eye space
 varying vec3 vNormal;
@@ -39,6 +39,8 @@ precision mediump float;
 uniform mat4 uMV, uP, uN;
 uniform vec3 lightPos; // in eye space
 uniform vec3 lightAmbient, lightDiffuse, lightSpecular;
+uniform samplerCube uCubemapTexture;
+
 varying vec3 matAmbient, matDiffuse, matSpecular;
 varying float matShininess;
 
@@ -56,7 +58,8 @@ void main() {
     vec3 vertDir = normalize(-vVertPos);
     vec3 specular = matSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), matShininess);
 
-    gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
+    //gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
+    gl_FragColor = textureCube(uCubemapTexture, reflectDir);
 }
 `;
 
@@ -310,7 +313,7 @@ class Cylinder extends Primitive {
 class Sphere extends Primitive {
     constructor(r) {
         super();
-        const NUM_STACKS = 12, NUM_SLICES = 12;
+        const NUM_STACKS = 32, NUM_SLICES = 32;
         for (let t = 0; t < NUM_STACKS; t++) {
             let theta1 = (t / NUM_STACKS) * Math.PI;
             let theta2 = ((t + 1) / NUM_STACKS) * Math.PI;
@@ -418,18 +421,19 @@ class Light extends Sphere {
 function main() {
     // init webGL-related variables
     initGL();
-    initCubemapTexture();
     initShaders();
-    Primitive.setupShader();
 
-    // setup uniform variables
+    Primitive.setupShader();
     [
         'uMV', 'uP', 'uN',
-        'lightPos',
-        'lightAmbient', 'lightDiffuse', 'lightSpecular',
         'uMatAmbient', 'uMatDiffuse', 'uMatSpecular',
         'uMatShininess',
+        'lightPos',
+        'lightAmbient', 'lightDiffuse', 'lightSpecular',
+        'uCubemapTexture',
     ].forEach(v => shader[v] = gl.getUniformLocation(shader, v));
+
+    initCubemapTexture();
 
     root = new EmptyNode();
     root.parent = root;
@@ -650,32 +654,35 @@ function initShaders() {
     gl.useProgram(shader); // use the shader program
 }
 
-const cubemapTextureSrc = [
-    ['texture/positive-x.png', gl.TEXTURE_CUBE_MAP_POSITIVE_X],
-    ['texture/negative-x.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
-    ['texture/positive-y.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
-    ['texture/negative-y.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
-    ['texture/negative-z.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
-    ['texture/positive-z.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
-];
-
-var cubemapTexture;
-
 function initCubemapTexture() {
-    cubemapTexture = gl.createTexture();
+    let cubemapTextureSrc = [
+        ['texture/positive-x.png', gl.TEXTURE_CUBE_MAP_POSITIVE_X],
+        ['texture/negative-x.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
+        ['texture/positive-y.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
+        ['texture/negative-y.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
+        ['texture/positive-z.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
+        ['texture/negative-z.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
+    ];
+
+    let cubemapTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemapTexture);
 
     cubemapTextureSrc.forEach(([src, type]) => {
-        gl.texImage2D(type, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         let img = new Image();
-        img.src = src;
-        image.addEventListener('load', function() {
+        gl.texImage2D(type, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        img.addEventListener('load', function() {
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemapTexture);
-            gl.texImage2D(target, level, internalFormat, format, type, image);
+            gl.texImage2D(type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
             gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
         });
+        img.src = src;
     });
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+
+    gl.uniform1i(shader.uCubemapTexture, 0);
 }
 
 // handle mouse event
