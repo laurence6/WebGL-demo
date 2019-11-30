@@ -103,10 +103,6 @@ class Primitive extends EmptyNode {
     updated = false; // buffer updated?
     bPosition;     // vbo for position of vertices
     bNormal;       // vbo for normal of vertices
-    bMatAmbient;   // vbo for material ambient
-    bMatDiffuse;   // vbo for material diffuse
-    bMatSpecular;  // vbo for material specular
-    bMatShininess; // vbo for material shininess
 
     constructor() {
         super();
