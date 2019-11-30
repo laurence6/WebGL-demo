@@ -86,6 +86,7 @@ var gl; // the graphics context (gc)
 var shader; // the shader program
 
 var camera; // camera
+var skybox; // skybox
 var light; // light
 var root; // root of primitives
 var curr; // current primitive
@@ -271,6 +272,14 @@ class Plane extends Primitive {
             0, 1, 0,
             0, 1, 0,
         ];
+        this.texCoords = [
+            0, 0, 0,
+            1, 0, 0,
+            1, 1, 0,
+            1, 1, 0,
+            0, 1, 0,
+            0, 0, 0,
+        ];
         this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
     }
 }
@@ -395,6 +404,14 @@ class Cube extends Primitive {
             0, 0, 5,
         ];
         this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
+    }
+}
+
+class Skybox extends Cube {
+    constructor() {
+        super(1000);
+        this.transform = mat4.create();
+        this.renderMode = 2;
     }
 }
 
@@ -587,6 +604,10 @@ function initScene() {
     mat4.fromTranslation(root.transform, v3(0, -1, 0)); // NOTE: Check Primitive's constructor
     curr = root;
 
+    skybox = new Skybox();
+    add(skybox);
+    curr = root;
+
     camera = new Camera();
     add(camera);
     mat4.targetTo(camera.transform, v3(-8, 8, -8), v3(0, 6, 0), v3(0, 1, 0));
@@ -603,14 +624,7 @@ function initScene() {
 
         let c = getRandomColor();
 
-        //add(new Plane(10));
-        //curr.renderMode = 3;
-        //curr = _parent;
-
-        //curr = root;
-
-        add(new Cube(6));
-        curr.renderMode=2;
+        curr = root;
     }
 }
 
@@ -677,9 +691,9 @@ function add(o) {
 // delete the current primitive and its children
 // remove it from its parent's children field
 // set current to its parent
-// NOTE: do not delete root, light, camera
+// NOTE: do not delete root, skybox, light, camera
 function del() {
-    if (curr == root || curr == light || curr == camera) {
+    if (curr == root || curr == skybox || curr == light || curr == camera) {
         return;
     }
 
