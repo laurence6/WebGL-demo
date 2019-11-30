@@ -418,6 +418,7 @@ class Light extends Sphere {
 function main() {
     // init webGL-related variables
     initGL();
+    initCubemapTexture();
     initShaders();
     Primitive.setupShader();
 
@@ -647,6 +648,28 @@ function initShaders() {
         throw 'Could not init shaders';
     }
     gl.useProgram(shader); // use the shader program
+}
+
+function initCubemapTexture() {
+    const texture = [
+        ['texture/positive-x.png', gl.TEXTURE_CUBE_MAP_POSITIVE_X],
+        ['texture/negative-x.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
+        ['texture/positive-y.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
+        ['texture/negative-y.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
+        ['texture/negative-z.png', gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
+        ['texture/positive-z.png', gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
+    ];
+    texture.forEach(([src, type]) => {
+        gl.texImage2D(type, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        let img = new Image();
+        img.src = src;
+        image.addEventListener('load', function() {
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+            gl.texImage2D(target, level, internalFormat, format, type, image);
+            gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+        });
+    });
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
 }
 
 // handle mouse event
