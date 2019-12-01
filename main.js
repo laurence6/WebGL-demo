@@ -77,7 +77,6 @@ void main() {
         reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
         gl_FragColor = textureCube(uTextureCubemap, reflectDir);
     } else if (uRenderMode == 4) {
-        vec3 normal = normalize(vNormal);
         vec3 reflectDir = normalize(vVertPos);
         reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
         gl_FragColor = textureCube(uTextureCubemap, reflectDir);
@@ -423,6 +422,11 @@ class Skybox extends Cube {
         this.transform = mat4.create();
         this.renderMode = 2;
     }
+
+    draw(M) {
+        mat4.identity(this.transform);
+        super.draw(M);
+    }
 }
 
 class Cylinder extends Primitive {
@@ -613,7 +617,7 @@ class Camera extends EmptyNode {
         mat4.perspective(this.P, toRadian(75), canvas.width/canvas.height, 0.01, 1000);
 
         // view matrix
-        mat4.invert(this.V, mul_m(this.parent.transform, this.transform));
+        mat4.invert(this.V, this.transform);
 
         // upload data to uniform variables
         gl.uniformMatrix4fv(shader.uV, false, this.V);
