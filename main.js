@@ -40,7 +40,7 @@ uniform vec3 lightPos; // in eye space
 uniform vec3 lightAmbient, lightDiffuse, lightSpecular;
 
 uniform int uRenderMode;
-uniform sampler2D uTextures[6];
+uniform sampler2D uTextures[7];
 uniform samplerCube uTextureCubemap;
 
 varying vec3 vVertPos; // in eye space
@@ -70,6 +70,7 @@ void main() {
         else if (i == 3) gl_FragColor = texture2D(uTextures[3], vec2(vTexCoords));
         else if (i == 4) gl_FragColor = texture2D(uTextures[4], vec2(vTexCoords));
         else if (i == 5) gl_FragColor = texture2D(uTextures[5], vec2(vTexCoords));
+        else if (i == 6) gl_FragColor = texture2D(uTextures[6], vec2(vTexCoords));
     } else if (uRenderMode == 3) {
         vec3 normal = normalize(vNormal);
         vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
@@ -696,17 +697,8 @@ function initScene() {
     mat4.fromTranslation(light.transform, v3(0, 12, 0));
     curr = root;
 
-    {
-        let _parent = new EmptyNode();
-        add(_parent);
-
-        let c = getRandomColor();
-
-        curr = root;
-    }
-
-    add(new Torus(2, 1));
-    curr.renderMode = 1;
+    add(new Sphere(4));
+    curr.renderMode = 2;
 }
 
 function getRandomColor() { return v3(Math.random(), Math.random(), Math.random()); }
@@ -922,6 +914,7 @@ function initTexture2D() {
         'texture/cubemap-mountain/positive-z.jpg',
         'texture/cubemap-mountain/negative-y.jpg',
         'texture/cubemap-mountain/positive-y.jpg',
+        'texture/sphere1.jpg',
     ]
     textureSrc.forEach((src, i) => {
         let texture = gl.createTexture();
