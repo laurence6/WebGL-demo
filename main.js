@@ -464,42 +464,88 @@ class Cylinder extends Primitive {
     }
 }
 
-class Sphere extends Primitive {
-    constructor(r) {
+class ParametrizedSurface extends Primitive {
+    constructor() {
         super();
-        const NUM_STACKS = 32, NUM_SLICES = 32;
-        for (let t = 0; t < NUM_STACKS; t++) {
-            let theta1 = (t / NUM_STACKS) * Math.PI;
-            let theta2 = ((t + 1) / NUM_STACKS) * Math.PI;
-            for (let p = 0; p < NUM_SLICES; p++) {
-                let phi1 = (p / NUM_SLICES) * 2 * Math.PI;
-                let phi2 = ((p + 1) / NUM_SLICES) * 2 * Math.PI;
-                let v1 = this.s2c(r, theta1, phi1);
-                let v2 = this.s2c(r, theta1, phi2);
-                let v3 = this.s2c(r, theta2, phi2);
-                let v4 = this.s2c(r, theta2, phi1);
-                if (t == 0) {
-                    this.add_vertices([v1, v3, v4]);
-                } else if (t == NUM_STACKS - 1) {
-                    this.add_vertices([v3, v1, v2]);
-                } else {
-                    this.add_vertices([v1, v2, v4]);
-                    this.add_vertices([v2, v3, v4]);
-                }
+    }
+
+    generateMesh(sr, tr, psf) {
+        for (let s1 = sr[0]; s1 < sr[1]; s1 += sr[2]) {
+            let s2 = s1 + sr[2];
+            for (let t1 = tr[0]; t1 < tr[1]; t1 += tr[2]) {
+                let t2 = t1 + tr[2];
+                let v1 = psf(s1, t1);
+                let v2 = psf(s1, t2);
+                let v3 = psf(s2, t2);
+                let v4 = psf(s2, t1);
+                this.add_vertices([v1, v2, v3]);
+                this.add_vertices([v3, v4, v1]);
             }
         }
-        this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
     }
 
     add_vertices(vs) {
-        this.numVertices += vs.length;
-        vs.forEach(v => this.position.push(...v));
-        vs.forEach(v => this.normal.push(...normalize(v)))
+        this.numVertices += 3;
+        vs.forEach(v => this.position.push(...v[0]));
+        if (vs[0][1] != null) {
+            vs.forEach(v => this.normal.push(...v[1]));
+        } else {
+            let d1 = sub(vs[1][0], vs[0][0]);
+            let d2 = sub(vs[2][0], vs[0][0]);
+            let n = vec3.create();
+            vec3.cross(n, d1, d2);
+            n = normalize(n);
+            this.normal.push(...n);
+            this.normal.push(...n);
+            this.normal.push(...n);
+        }
+        vs.forEach(v => this.texCoords.push(...v[2]));
     }
+}
 
-    // Spherical coordinates -> Cartesian coordinates
-    s2c(r, theta, phi) {
-        return v3(r * Math.sin(theta) * Math.cos(phi), r * Math.cos(theta), r * Math.sin(theta) * Math.sin(phi));
+class Sphere extends ParametrizedSurface {
+    constructor(r) {
+        super();
+        let sr = [-1.0, 1.0, 0.05];
+        let tr = [-0.5, 0.5, 0.025];
+        let psf = (s, t) => {
+            let p = v3(
+                r * Math.cos(Math.PI * t) * Math.cos(Math.PI * s),
+                -r * Math.sin(Math.PI * t),
+                r * Math.cos(Math.PI * t) * Math.sin(Math.PI * s),
+            );
+            let uv = v3(
+                (s + 1.0) / 2.0,
+                t + 0.5,
+                0,
+            );
+            return [p, normalize(p), uv];
+        };
+        this.generateMesh(sr, tr, psf);
+        this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
+    }
+}
+
+class Torus extends Sphere {
+    constructor(r0, r1) {
+        super();
+        let sr = [-1.0, 1.0, 0.05];
+        let tr = [-1.0, 1.0, 0.05];
+        let psf = (s, t) => {
+            let p = v3(
+                (r0 + r1 * Math.cos(Math.PI * t)) * Math.sin(Math.PI * s),
+                -r1 * Math.sin(Math.PI * t),
+                (r0 + r1 * Math.cos(Math.PI * t)) * Math.cos(Math.PI * s),
+            );
+            let uv = v3(
+                (s + 1.0) / 2.0,
+                (t + 1.0) / 2.0,
+                0,
+            );
+            return [p, null, uv];
+        };
+        this.generateMesh(sr, tr, psf);
+        this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
     }
 }
 
@@ -635,6 +681,9 @@ function initScene() {
 
         curr = root;
     }
+
+    add(new Torus(2, 1));
+    curr.renderMode = 1;
 }
 
 function getRandomColor() { return v3(Math.random(), Math.random(), Math.random()); }
@@ -793,7 +842,7 @@ function updateTreeDisplay() {
 
     str += '\n';
     str += 'Mode: ' + controllerMode.name + '\n';
-    str += 'Axis: ' + "XYZ"[controllerAxis] + '\n';
+    str += 'Axis: ' + 'XYZ'[controllerAxis] + '\n';
 
     document.getElementById('tree-display').innerText = str;
 }
@@ -1028,6 +1077,12 @@ function v3(x, y, z) {
 function normalize(v1) {
     let v = vec3.create();
     vec3.normalize(v, v1);
+    return v;
+}
+
+function sub(v1, v2) {
+    let v = vec3.create();
+    vec3.sub(v, v1, v2);
     return v;
 }
 
