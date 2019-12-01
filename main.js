@@ -513,12 +513,12 @@ class Sphere extends ParametrizedSurface {
             let p = v3(
                 r * cos(pi * t) * cos(pi * s),
                 -r * sin(pi * t),
-                r * cos(pi * t) * sin(pi * s),
+                -r * cos(pi * t) * sin(pi * s),
             );
             let uv = v3(
                 (s + 1.0) / 2.0,
                 t + 0.5,
-                0,
+                6,
             );
             return [p, normalize(p), uv];
         };
