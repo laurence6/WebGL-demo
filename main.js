@@ -40,7 +40,7 @@ uniform vec3 lightPos; // in eye space
 uniform vec3 lightAmbient, lightDiffuse, lightSpecular;
 
 uniform int uRenderMode;
-uniform sampler2D uTextures[7];
+uniform sampler2D uTextures[8];
 uniform samplerCube uTextureCubemap;
 
 varying vec3 vVertPos; // in eye space
@@ -71,6 +71,7 @@ void main() {
         else if (i == 4) gl_FragColor = texture2D(uTextures[4], vec2(vTexCoords));
         else if (i == 5) gl_FragColor = texture2D(uTextures[5], vec2(vTexCoords));
         else if (i == 6) gl_FragColor = texture2D(uTextures[6], vec2(vTexCoords));
+        else if (i == 7) gl_FragColor = texture2D(uTextures[7], vec2(vTexCoords));
     } else if (uRenderMode == 3) {
         vec3 normal = normalize(vNormal);
         vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
@@ -919,6 +920,7 @@ function initTexture2D() {
         'texture/cubemap-dreese/negative-y.jpg',
         'texture/cubemap-dreese/positive-y.jpg',
         'texture/sphere-dreese.jpg',
+        'texture/texture-1.jpg'
     ]
     textureSrc.forEach((src, i) => {
         let texture = gl.createTexture();
