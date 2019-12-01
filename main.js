@@ -442,8 +442,8 @@ class Cylinder extends Primitive {
 
         // degree to vertex
         const degPos = deg => {
-            let _x = r * Math.cos(toRadian(deg));
-            let _z = r * Math.sin(toRadian(deg));
+            let _x = r * cos(toRadian(deg));
+            let _z = r * sin(toRadian(deg));
             return v3(_x, y, _z);
         };
 
@@ -510,9 +510,9 @@ class Sphere extends ParametrizedSurface {
         let tr = [-0.5, 0.5, 0.025];
         let psf = (s, t) => {
             let p = v3(
-                r * Math.cos(Math.PI * t) * Math.cos(Math.PI * s),
-                -r * Math.sin(Math.PI * t),
-                r * Math.cos(Math.PI * t) * Math.sin(Math.PI * s),
+                r * cos(pi * t) * cos(pi * s),
+                -r * sin(pi * t),
+                r * cos(pi * t) * sin(pi * s),
             );
             let uv = v3(
                 (s + 1.0) / 2.0,
@@ -526,16 +526,39 @@ class Sphere extends ParametrizedSurface {
     }
 }
 
-class Torus extends Sphere {
+class Torus extends ParametrizedSurface {
     constructor(r0, r1) {
         super();
         let sr = [-1.0, 1.0, 0.05];
         let tr = [-1.0, 1.0, 0.05];
         let psf = (s, t) => {
             let p = v3(
-                (r0 + r1 * Math.cos(Math.PI * t)) * Math.sin(Math.PI * s),
-                -r1 * Math.sin(Math.PI * t),
-                (r0 + r1 * Math.cos(Math.PI * t)) * Math.cos(Math.PI * s),
+                (r0 + r1 * cos(pi * t)) * sin(pi * s),
+                -r1 * sin(pi * t),
+                (r0 + r1 * cos(pi * t)) * cos(pi * s),
+            );
+            let uv = v3(
+                (s + 1.0) / 2.0,
+                (t + 1.0) / 2.0,
+                0,
+            );
+            return [p, null, uv];
+        };
+        this.generateMesh(sr, tr, psf);
+        this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
+    }
+}
+
+class Helicoid extends ParametrizedSurface {
+    constructor(b) {
+        super();
+        let sr = [-1.0, 1.0, 0.05];
+        let tr = [-1.0, 1.0, 0.05];
+        let psf = (s, t) => {
+            let p = v3(
+                t * cos(pi * s),
+                pi * s * b,
+                t * sin(pi * s),
             );
             let uv = v3(
                 (s + 1.0) / 2.0,
@@ -1102,3 +1125,13 @@ function inv_m(m1) {
 function toRadian(x) {
     return glMatrix.toRadian(x);
 }
+
+function sin(x) {
+    return Math.sin(x);
+}
+
+function cos(x) {
+    return Math.cos(x);
+}
+
+const pi = Math.PI;
