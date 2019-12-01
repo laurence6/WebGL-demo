@@ -914,7 +914,7 @@ function initTexture2D() {
         'texture/cubemap-dreese/positive-z.jpg',
         'texture/cubemap-dreese/negative-y.jpg',
         'texture/cubemap-dreese/positive-y.jpg',
-        'texture/sphere2.jpg',
+        'texture/sphere-dreese.jpg',
     ]
     textureSrc.forEach((src, i) => {
         let texture = gl.createTexture();
@@ -937,12 +937,12 @@ function initTexture2D() {
 
 function initTextureCubemap() {
     const textureCubemapSrc = [
-        ['texture/cubemap-dreese/positive-x.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_X],
-        ['texture/cubemap-dreese/negative-x.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
-        ['texture/cubemap-dreese/positive-y.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
-        ['texture/cubemap-dreese/negative-y.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
-        ['texture/cubemap-dreese/positive-z.jpg', 512, gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
-        ['texture/cubemap-dreese/negative-z.jpg', 512, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
+        ['texture/cubemap-dreese/positive-x.jpg', 1024, gl.TEXTURE_CUBE_MAP_POSITIVE_X],
+        ['texture/cubemap-dreese/negative-x.jpg', 1024, gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
+        ['texture/cubemap-dreese/positive-y.jpg', 1024, gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
+        ['texture/cubemap-dreese/negative-y.jpg', 1024, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
+        ['texture/cubemap-dreese/positive-z.jpg', 1024, gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
+        ['texture/cubemap-dreese/negative-z.jpg', 1024, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
     ];
 
     let textureCubemap = gl.createTexture();
