@@ -50,6 +50,20 @@ varying vec3 vNormal;
 varying vec3 vTangent;
 varying vec3 vTexCoords;
 
+vec4 light(vec3 normal) {
+    vec3 lightDir = normalize(lightPos - vVertPos);
+
+    vec3 ambient = uMatAmbient * lightAmbient;
+
+    vec3 diffuse = uMatDiffuse * lightDiffuse * max(dot(normal, lightDir), 0.0);
+
+    vec3 reflectDir = reflect(-lightDir, normal);
+    vec3 vertDir = normalize(-vVertPos);
+    vec3 specular = uMatSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), uMatShininess);
+
+    return vec4(ambient + diffuse + specular, 1.0);
+}
+
 vec4 sample(vec3 texCoords) {
     int i = int(floor(texCoords[2]+0.5));
     vec2 uv = vec2(texCoords);
@@ -64,56 +78,31 @@ vec4 sample(vec3 texCoords) {
     else if (i == 8) return texture2D(uTextures[8], uv);
 }
 
+vec4 cube(vec3 dir) {
+    return textureCube(uTextureCubemap, dir);
+}
+
 void main() {
     if (uRenderMode == 1) {
         vec3 normal = normalize(vNormal);
-
-        vec3 ambient = uMatAmbient * lightAmbient;
-
-        vec3 lightDir = normalize(lightPos - vVertPos);
-
-        vec3 diffuse = uMatDiffuse * lightDiffuse * max(dot(normal, lightDir), 0.0);
-
-        vec3 reflectDir = reflect(-lightDir, normal);
-        vec3 vertDir = normalize(-vVertPos);
-        vec3 specular = uMatSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), uMatShininess);
-
-        gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
+        gl_FragColor = light(normal);
     } else if (uRenderMode == 2) {
         gl_FragColor = sample(vTexCoords);
     } else if (uRenderMode == 3) {
         vec3 normal = normalize(vNormal);
         vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
         reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
-        gl_FragColor = textureCube(uTextureCubemap, reflectDir);
+        gl_FragColor = cube(reflectDir);
     } else if (uRenderMode == 4) {
-        vec3 reflectDir = normalize(vVertPos);
-        reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
-        gl_FragColor = textureCube(uTextureCubemap, reflectDir);
-    } else if (uRenderMode == 5) {
-        vec3 texCoords = vTexCoords;
-        gl_FragColor = sample(texCoords);
-
         vec3 normal = normalize(vNormal);
         vec3 tangent = normalize(vTangent);
         tangent = normalize(tangent - dot(tangent, normal) * normal);
         vec3 bitangent = cross(normal, tangent);
-        texCoords.z += 1.0;
-        vec3 bumpnormal = normalize(vec3(sample(texCoords)) * 2.0 - 1.0);
+        vec3 bumpnormal = normalize(vec3(sample(vTexCoords + vec3(0.0, 0.0, 1.0))) * 2.0 - 1.0);
         mat3 TBN = mat3(tangent, bitangent, normal);
         normal = normalize(TBN * bumpnormal);
 
-        vec3 ambient = uMatAmbient * lightAmbient;
-
-        vec3 lightDir = normalize(lightPos - vVertPos);
-
-        vec3 diffuse = uMatDiffuse * lightDiffuse * max(dot(normal, lightDir), 0.0);
-
-        vec3 reflectDir = reflect(-lightDir, normal);
-        vec3 vertDir = normalize(-vVertPos);
-        vec3 specular = uMatSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), uMatShininess);
-
-        gl_FragColor *= vec4(ambient + diffuse + specular, 1.0);
+        gl_FragColor = sample(vTexCoords) * light(normal);
     } else {
         discard;
     }
