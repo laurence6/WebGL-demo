@@ -6,11 +6,11 @@ precision mediump float;
 
 uniform mat4 uM, uV, uP, uN;
 
-attribute vec3 aPosition, aNormal;
-attribute vec3 aTexCoords;
+attribute vec3 aPosition, aNormal, aTangent, aTexCoords;
 
 varying vec3 vVertPos; // in eye space
 varying vec3 vNormal;
+varying vec3 vTangent;
 varying vec3 vTexCoords;
 
 void main() {
@@ -19,7 +19,9 @@ void main() {
     vec4 p = uV * uM * vec4(aPosition, 1.0);
     vVertPos = vec3(p);
 
-    vNormal = vec3(uN * vec4(aNormal, 0.0));
+    vNormal = normalize(vec3(uN * vec4(aNormal, 0.0)));
+
+    vTangent = normalize(vec3(uN * vec4(aTangent, 0.0)));
 
     vTexCoords = aTexCoords;
 
@@ -40,18 +42,34 @@ uniform vec3 lightPos; // in eye space
 uniform vec3 lightAmbient, lightDiffuse, lightSpecular;
 
 uniform int uRenderMode;
-uniform sampler2D uTextures[8];
+uniform sampler2D uTextures[9];
 uniform samplerCube uTextureCubemap;
 
 varying vec3 vVertPos; // in eye space
 varying vec3 vNormal;
+varying vec3 vTangent;
 varying vec3 vTexCoords;
+
+vec4 sample(vec3 texCoords) {
+    int i = int(floor(texCoords[2]+0.5));
+    vec2 uv = vec2(texCoords);
+         if (i == 0) return texture2D(uTextures[0], uv);
+    else if (i == 1) return texture2D(uTextures[1], uv);
+    else if (i == 2) return texture2D(uTextures[2], uv);
+    else if (i == 3) return texture2D(uTextures[3], uv);
+    else if (i == 4) return texture2D(uTextures[4], uv);
+    else if (i == 5) return texture2D(uTextures[5], uv);
+    else if (i == 6) return texture2D(uTextures[6], uv);
+    else if (i == 7) return texture2D(uTextures[7], uv);
+    else if (i == 8) return texture2D(uTextures[8], uv);
+}
 
 void main() {
     if (uRenderMode == 1) {
+        vec3 normal = normalize(vNormal);
+
         vec3 ambient = uMatAmbient * lightAmbient;
 
-        vec3 normal = normalize(vNormal);
         vec3 lightDir = normalize(lightPos - vVertPos);
 
         vec3 diffuse = uMatDiffuse * lightDiffuse * max(dot(normal, lightDir), 0.0);
@@ -62,16 +80,7 @@ void main() {
 
         gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
     } else if (uRenderMode == 2) {
-        int i = int(floor(vTexCoords[2]+0.5));
-        vec2 uv = vec2(vTexCoords);
-        if (i == 0) gl_FragColor = texture2D(uTextures[0], vec2(vTexCoords));
-        else if (i == 1) gl_FragColor = texture2D(uTextures[1], vec2(vTexCoords));
-        else if (i == 2) gl_FragColor = texture2D(uTextures[2], vec2(vTexCoords));
-        else if (i == 3) gl_FragColor = texture2D(uTextures[3], vec2(vTexCoords));
-        else if (i == 4) gl_FragColor = texture2D(uTextures[4], vec2(vTexCoords));
-        else if (i == 5) gl_FragColor = texture2D(uTextures[5], vec2(vTexCoords));
-        else if (i == 6) gl_FragColor = texture2D(uTextures[6], vec2(vTexCoords));
-        else if (i == 7) gl_FragColor = texture2D(uTextures[7], vec2(vTexCoords));
+        gl_FragColor = sample(vTexCoords);
     } else if (uRenderMode == 3) {
         vec3 normal = normalize(vNormal);
         vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
@@ -81,6 +90,30 @@ void main() {
         vec3 reflectDir = normalize(vVertPos);
         reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
         gl_FragColor = textureCube(uTextureCubemap, reflectDir);
+    } else if (uRenderMode == 5) {
+        vec3 texCoords = vTexCoords;
+        gl_FragColor = sample(texCoords);
+
+        vec3 normal = normalize(vNormal);
+        vec3 tangent = normalize(vTangent);
+        tangent = normalize(tangent - dot(tangent, normal) * normal);
+        vec3 bitangent = cross(normal, tangent);
+        texCoords.z += 1.0;
+        vec3 bumpnormal = normalize(vec3(sample(texCoords)) * 2.0 - 1.0);
+        mat3 TBN = mat3(tangent, bitangent, normal);
+        normal = normalize(TBN * bumpnormal);
+
+        vec3 ambient = uMatAmbient * lightAmbient;
+
+        vec3 lightDir = normalize(lightPos - vVertPos);
+
+        vec3 diffuse = uMatDiffuse * lightDiffuse * max(dot(normal, lightDir), 0.0);
+
+        vec3 reflectDir = reflect(-lightDir, normal);
+        vec3 vertDir = normalize(-vVertPos);
+        vec3 specular = uMatSpecular * lightSpecular * pow(max(dot(reflectDir, vertDir), 0.0), uMatShininess);
+
+        gl_FragColor *= vec4(ambient + diffuse + specular, 1.0);
     } else {
         discard;
     }
@@ -127,6 +160,7 @@ class Primitive extends EmptyNode {
 
     position = [];   // position of vertices
     normal = [];     // normal of vertices
+    tangent = [];    // tangent of vertices
     texCoords = [];  // texture coordinates of vertices
     matAmbient;      // material ambient
     matDiffuse;      // material diffuse
@@ -137,6 +171,7 @@ class Primitive extends EmptyNode {
     updated = false; // buffer updated?
     bPosition;       // vbo for position of vertices
     bNormal;         // vbo for normal of vertices
+    bTangent;        // vbo for tangent of vertices
     bTexCoords;      // vbo for texture coordinates of vertices
 
     constructor() {
@@ -198,9 +233,39 @@ class Primitive extends EmptyNode {
         this.updated = false;
     }
 
+    generateTangent() {
+        this.tangent = new Array(this.position.length);
+        this.tangent.fill(0);
+        for (let i = 0; i < this.position.length; i += 9) {
+            let p0 = v3(...this.position.slice(i, i+3));
+            let p1 = v3(...this.position.slice(i+3, i+6));
+            let p2 = v3(...this.position.slice(i+6, i+9));
+
+            let edge1 = sub(p1, p0);
+            let edge2 = sub(p2, p0);
+
+            let deltaU1 = this.texCoords[i+3+0] - this.texCoords[i+0];
+            let deltaV1 = this.texCoords[i+3+1] - this.texCoords[i+1];
+            let deltaU2 = this.texCoords[i+6+0] - this.texCoords[i+0];
+            let deltaV2 = this.texCoords[i+6+1] - this.texCoords[i+1];
+
+            let f = 1.0 / (deltaU1 * deltaV2 - deltaU2 * deltaV1);
+
+            let tan = normalize(v3(
+                f * (deltaV2 * edge1[0] - deltaV1 * edge2[0]),
+                f * (deltaV2 * edge1[1] - deltaV1 * edge2[1]),
+                f * (deltaV2 * edge1[2] - deltaV1 * edge2[2]),
+            ));
+
+            [0, 3, 6].forEach(j => tan.forEach((t, k) => this.tangent[i+j+k] = t));
+        }
+    }
+
     // upload vertices data to buffer
     uploadData() {
         if (!this.updated) {
+            this.generateTangent();
+
             Primitive.attributes.forEach(({buf, dat, n}) => {
                 if (this[dat].length == 0) {
                     this[dat] = new Array(this.numVertices * n);
@@ -258,6 +323,7 @@ class Primitive extends EmptyNode {
 Primitive.attributes = [
     {att: 'aPosition',  buf: 'bPosition',  dat: 'position',  n: 3},
     {att: 'aNormal',    buf: 'bNormal',    dat: 'normal',    n: 3},
+    {att: 'aTangent',   buf: 'bTangent',   dat: 'tangent',   n: 3},
     {att: 'aTexCoords', buf: 'bTexCoords', dat: 'texCoords', n: 3},
 ];
 
@@ -634,7 +700,7 @@ class Light extends Sphere {
     specular;
 
     constructor() {
-        super(0.1);
+        super(0.2);
         this.setMaterial(v3(10, 10, 10), v3(0, 0, 0), v3(0, 0, 0), 3);
 
         this.ambient = v3(0.2, 0.2, 0.2);
@@ -792,7 +858,7 @@ function setAxis(a) {
 // controller mode
 // translate on axis for steps
 function translate(obj, axis, step) {
-    step *= 0.5;
+    step *= 2.0;
     let a = vec3.create();
     a[axis] = step;
     mat4.mul(obj.transform, obj.transform, mat4.fromTranslation(mat4.create(), a));
@@ -801,7 +867,7 @@ function translate(obj, axis, step) {
 // controller mode
 // rotate about axis for steps
 function rotate(obj, axis, step) {
-    step *= toRadian(5);
+    step *= toRadian(20);
     let a = vec3.create();
     a[axis] = 1;
     mat4.mul(obj.transform, obj.transform, mat4.fromRotation(mat4.create(), step, a));
@@ -920,7 +986,8 @@ function initTexture2D() {
         'texture/cubemap-dreese/negative-y.jpg',
         'texture/cubemap-dreese/positive-y.jpg',
         'texture/sphere-dreese.jpg',
-        'texture/texture-1.jpg'
+        'texture/texture-1.jpg',
+        'texture/texture-1-bump.jpg',
     ]
     textureSrc.forEach((src, i) => {
         let texture = gl.createTexture();
