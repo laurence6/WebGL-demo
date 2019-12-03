@@ -1,3 +1,11 @@
+The initial scene is divided into tiles. Each tile has a randomly generated object.
+
+There are six possible rendering modes for objects: light only, texture only, light + texture, light + bump, light + texture + bump, cubemap.
+
+Objects have three drawing modes: fill (triangle), line, and point.
+
+A point light source follows the camera to the nearest tile and rotate around the center of the tile.
+
 # Usage
 
 - Hierarchy tree:
@@ -10,18 +18,21 @@
 - Creating new primitives:
     - Click buttons and enter parameters to create a new cube/cylinder/sphere/model.
     - Newly created primitive will be the child of the selected primitive and placed at `(0, 1, 0)` position relative to the selected primitive.
+- Deleting the selected primitive:
+    - Click `Delete` button.
+    - Use `Delete` key.
 - Moving:
-    - Use the key to move the selected primitive:
-        - `w`: forward
-        - `a`: backward
-        - `s`: left
-        - `d`: right
-        - `q`: up
-        - `e`: down
+    - Use the key to control the camera:
+        - `w`: move forward
+        - `s`: move backward
+        - `a`: rotate left
+        - `d`: rotate right
+        - `q`: rotate down
+        - `e`: rotate up
     - Use the key to move root forward/backward/left/right/up/down.
         - `W`: forward
-        - `A`: backward
-        - `S`: left
+        - `S`: backward
+        - `A`: left
         - `D`: right
         - `Q`: up
         - `E`: down
@@ -40,7 +51,11 @@
     - Pick a color and click `Set Color` button.
 - Setting the light's color:
     - Pick a color and click `Set Light Color` button.
+- Setting the drawing mode:
+    - Click `Fill`, `Line`, `Point` buttons.
+- Setting the rendering mode:
+    - Click `Light`, `Texture`, `Light+Texture`, `Light+Bump`, `Light+Texture+Bump`, `Cube Mapping` buttons.
 
 # Browser Tested
 
-Chrome Version 79.0.3945.29 (Official Build) beta (64-bit)
+Chrome Version 79.0.3945.45 (Official Build) beta (64-bit)
