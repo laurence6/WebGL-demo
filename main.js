@@ -187,6 +187,8 @@ class Primitive extends EmptyNode {
         Primitive.attributes.forEach(({buf}) => this[buf] = gl.createBuffer());
     }
 
+    // draw mode: triangles/lines/points
+    // when switching, update vertices
     _drawMode = gl.TRIANGLES;
     get drawMode() { return this._drawMode }
     set drawMode(value) {
@@ -238,6 +240,7 @@ class Primitive extends EmptyNode {
         this.updated = false;
     }
 
+    // generate tangents
     generateTangent() {
         this.tangent = new Array(this.position.length);
         this.tangent.fill(0);
@@ -488,6 +491,7 @@ class Cube extends Primitive {
     }
 }
 
+// Skybox is a very large Cube with texture of cubemap
 class Skybox extends Cube {
     constructor() {
         super(800);
@@ -546,6 +550,10 @@ class ParametrizedSurface extends Primitive {
         super();
     }
 
+    // generate triangle mesh
+    // sr: range of s
+    // tr: range of t
+    // psf: function to generate (x,y,z) from (s,t)
     generateMesh(sr, tr, psf) {
         for (let s1 = sr[0]; s1 < sr[1]; s1 += sr[2]) {
             let s2 = s1 + sr[2];
@@ -561,6 +569,8 @@ class ParametrizedSurface extends Primitive {
         }
     }
 
+    // add vertices of a triangle
+    // if it doesn't have a normal, generate one
     add_vertices(vs) {
         this.numVertices += 3;
         vs.forEach(v => this.position.push(...v[0]));
@@ -684,6 +694,7 @@ class Moving {
         this.speed = Math.random() / 2 + 0.5;
     }
 
+    // move object
     update() {
         let x = Math.sin(this.seed + timer.frame * 0.05 * this.speed) * this.range * 0.05;
         mat4.translate(this.obj.transform, this.obj.transform, v3(0, x, 0));
@@ -701,6 +712,7 @@ class Rotating {
         this.speed = Math.random() / 2 + 0.5;
     }
 
+    // rotate object
     update() {
         let x = 0.05 * this.speed;
         mat4.rotateY(this.obj.transform, this.obj.transform, x);
@@ -767,6 +779,7 @@ class Light extends Sphere {
 
     // upload light params to uniform variables
     update() {
+        // update light's position to follow the camera
         let newcenter = mat4.getTranslation(vec3.create(), camera.transform);
         newcenter = newcenter.map(x => Math.round(x/12) * 12);
         newcenter[1] = 3;
@@ -775,7 +788,6 @@ class Light extends Sphere {
             let newposition = vec3.add(vec3.create(), this.center, v3(0, 0, 3));
             mat4.fromTranslation(this.transform, newposition);
         }
-
         let rot = mat4.fromTranslation(mat4.create(), v3(-this.center[0], -this.center[1], -this.center[2]));
         rot = mul_m(mat4.fromRotation(mat4.create(), toRadian(2), v3(0, 1, 0)), rot);
         rot = mul_m(mat4.fromTranslation(mat4.create(), this.center), rot);
@@ -887,50 +899,68 @@ function initScene() {
                     if (random < 0.20) {
                         add(new Cube(2));
                         random = Math.random();
-                        if (random < 0.30) {
+                        if (random < 0.16) {
                             curr.renderMode = 1;
-                        } else if (random < 0.60) {
+                        } else if (random < 0.32) {
                             curr.renderMode = 2;
-                        } else {
+                        } else if (random < 0.48) {
                             curr.renderMode = 3;
+                        } else if (random < 0.64) {
+                            curr.renderMode = 4;
+                            for (let i = 2; i < curr.texCoords.length; i += 3) {
+                                curr.texCoords[i] = 7;
+                            }
+                        } else if (random < 0.80) {
+                            curr.renderMode = 5;
+                            for (let i = 2; i < curr.texCoords.length; i += 3) {
+                                curr.texCoords[i] = 7;
+                            }
+                        } else {
+                            curr.renderMode = 6;
                         }
                     } else if (random < 0.40) {
                         add(new Sphere(1));
                         random = Math.random();
-                        if (random < 0.30) {
+                        if (random < 0.25) {
                             curr.renderMode = 1;
-                        } else if (random < 0.60) {
+                        } else if (random < 0.50) {
                             curr.renderMode = 2;
-                        } else {
+                        } else if (random < 0.75) {
                             curr.renderMode = 3;
+                        } else {
+                            curr.renderMode = 6;
                         }
                     } else if (random < 0.60) {
                         add(new Torus(1, 0.5));
                         random = Math.random();
-                        if (random < 0.30) {
+                        if (random < 0.25) {
                             curr.renderMode = 1;
-                        } else if (random < 0.60) {
+                        } else if (random < 0.50) {
                             curr.renderMode = 2;
-                        } else {
+                        } else if (random < 0.75) {
                             curr.renderMode = 3;
+                        } else {
+                            curr.renderMode = 6;
                         }
                     } else if (random < 0.80) {
                         add(new Cone());
                         random = Math.random();
-                        if (random < 0.30) {
+                        if (random < 0.25) {
                             curr.renderMode = 1;
-                        } else if (random < 0.60) {
+                        } else if (random < 0.50) {
                             curr.renderMode = 2;
-                        } else {
+                        } else if (random < 0.75) {
                             curr.renderMode = 3;
+                        } else {
+                            curr.renderMode = 6;
                         }
                     } else {
                         add(new Model());
                         random = Math.random();
-                        if (random < 0.25) {
+                        if (random < 0.75) {
                             curr.renderMode = 1;
                         } else {
-                            curr.renderMode = 3;
+                            curr.renderMode = 6;
                         }
                     }
 
