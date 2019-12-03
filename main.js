@@ -178,7 +178,7 @@ class Primitive extends EmptyNode {
             case gl.POINTS:
                 break;
             case gl.LINES:
-                if (this._drawMode == gl.TRIANGLES) {
+                if (this._drawMode == gl.TRIANGLES || this._drawMode == gl.POINTS) {
                     let len = this.position.length;
                     Primitive.attributes.forEach(({dat, n}) => {
                         let newdat = [];
@@ -193,6 +193,7 @@ class Primitive extends EmptyNode {
                     this.updated = false;
                 }
                 break;
+            case gl.POINTS:
             case gl.TRIANGLES:
                 if (this._drawMode == gl.LINES) {
                     let len = this.position.length;
