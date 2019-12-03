@@ -803,7 +803,7 @@ class Light extends Sphere {
 class TreeDisplay {
     // update hierarchy tree display on the web page
     update() {
-        let str = '';
+        let str = 'Current position: ' + mat4.getTranslation(vec3.create(), camera.transform).map(Math.round) + '\n';
 
         root.display((o, d) => str += '| '.repeat(d) + (typeof(o.name) !== 'undefined' ? o.name : o.constructor.name) + (o == curr ? ' <-' : '') + '\n');
 
@@ -879,7 +879,7 @@ function initScene() {
         for (let i = -size; i <= size; i++) {
             for (let j = -size; j <= size; j++) {
                 add(new EmptyNode());
-                curr.name = "EmptyNode at " + i + ", " + j;
+                curr.name = "EmptyNode at " + i * tilesize + ", " + j * tilesize;
                 mat4.fromTranslation(curr.transform, v3(i * tilesize, 0, j * tilesize));
                 updater.push(new Moving(curr, 0.5));
 
