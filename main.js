@@ -101,7 +101,6 @@ void main() {
         vec3 bumpnormal = normalize(vec3(sample(vTexCoords + vec3(0.0, 0.0, 1.0))) * 2.0 - 1.0);
         mat3 TBN = mat3(tangent, bitangent, normal);
         normal = normalize(TBN * bumpnormal);
-
         gl_FragColor = sample(vTexCoords) * light(normal);
     } else {
         discard;
@@ -180,9 +179,10 @@ class Primitive extends EmptyNode {
                 break;
             case gl.LINES:
                 if (this._drawMode == gl.TRIANGLES) {
+                    let len = this.position.length;
                     Primitive.attributes.forEach(({dat, n}) => {
                         let newdat = [];
-                        for (let i = 0; i < this.position.length; i += 9) { // FIXME: Assume n == 3
+                        for (let i = 0; i < len; i += 9) { // FIXME: Assume n == 3
                             [i, i+3, i+3, i+6, i+6, i].forEach(o => {
                                 newdat.push(this[dat][o], this[dat][o+1], this[dat][o+2]);
                             });
@@ -195,9 +195,10 @@ class Primitive extends EmptyNode {
                 break;
             case gl.TRIANGLES:
                 if (this._drawMode == gl.LINES) {
+                    let len = this.position.length;
                     Primitive.attributes.forEach(({dat, n}) => {
                         let newdat = [];
-                        for (let i = 0; i < this.position.length; i += 18) { // FIXME: Assume n == 3
+                        for (let i = 0; i < len; i += 18) { // FIXME: Assume n == 3
                             [i, i+3, i+9].forEach(o => {
                                 newdat.push(this[dat][o], this[dat][o+1], this[dat][o+2]);
                             });
