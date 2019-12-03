@@ -973,8 +973,10 @@ function initScene() {
                     }
 
                     mat4.fromTranslation(curr.transform, v3(0, 4, 0));
-                    let c = getRandomColor();
-                    curr.setMaterial(c, c, c, 3);
+                    if (curr.renderMode == 1) {
+                        let c = getRandomColor();
+                        curr.setMaterial(c, c, c, 3);
+                    }
                     updater.push(new Rotating(curr));
 
                     curr = curr.parent;
