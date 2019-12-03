@@ -168,7 +168,7 @@ class Primitive extends EmptyNode {
 
     constructor() {
         super();
-        // NOTE: default transform is T(0,1,0) for a better user experience
+        // NOTE: default transform for a better user experience
         mat4.fromTranslation(this.transform, v3(0, 1, 0));
 
         // create buffers
@@ -746,12 +746,28 @@ class Light extends Sphere {
         this.ambient = v3(0.2, 0.2, 0.2);
         this.diffuse = v3(0.7, 0.7, 0.7);
         this.specular = v3(1, 1, 1);
+
+        this.center = v3(0, 1, 0);
         this.update();
     }
 
+    center;
+
     // upload light params to uniform variables
     update() {
-        mat4.mul(this.transform, mat4.fromRotation(mat4.create(), toRadian(2), v3(0, 1, 0)), this.transform);
+        let newcenter = mat4.getTranslation(vec3.create(), camera.transform);
+        newcenter = newcenter.map(x => Math.round(x/12) * 12);
+        newcenter[1] = 3;
+        if (this.center[0] != newcenter[0] || this.center[2] != newcenter[2]) {
+            this.center = newcenter;
+            let newposition = vec3.add(vec3.create(), this.center, v3(0, 0, 3));
+            mat4.fromTranslation(this.transform, newposition);
+        }
+
+        let rot = mat4.fromTranslation(mat4.create(), v3(-this.center[0], -this.center[1], -this.center[2]));
+        rot = mul_m(mat4.fromRotation(mat4.create(), toRadian(2), v3(0, 1, 0)), rot);
+        rot = mul_m(mat4.fromTranslation(mat4.create(), this.center), rot);
+        mat4.mul(this.transform, rot, this.transform);
 
         gl.uniform3fv(shader.lightPos, vec3.transformMat4(vec3.create(), vec3.create(), mul_m(camera.V, this.transform)));
         gl.uniform3fv(shader.lightAmbient, this.ambient);
@@ -830,7 +846,6 @@ function initScene() {
 
     light = new Light();
     add(light);
-    mat4.fromTranslation(light.transform, v3(0, 2.5, 3));
     curr = root;
     updater.push(light);
 
@@ -855,7 +870,7 @@ function initScene() {
                     curr = curr.parent;
                 }
 
-                if (i != 0 || j != 0) {
+                {
                     let random = Math.random();
                     if (random < 0.20) {
                         add(new Cube(2));
