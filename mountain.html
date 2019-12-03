@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+
+        <script src="data.js"></script>
+        <script src="texture_mountain.js"></script>
+        <script src="main.js"></script>
+
+        <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        html, body {
+            height: 100%;
+        }
+        canvas {
+            float: right;
+            border: none;
+        }
+        #controller {
+            float: left;
+            width: 16rem;
+            padding: .75rem;
+            overflow-x: auto;
+        }
+        #controller > * {
+            margin-top: 5px;
+        }
+        #tree-display {
+            padding: .375rem .75rem;
+        }
+        button {
+            border: 1px solid transparent;
+            padding: .375rem .75rem;
+            background: gray;
+            color: white;
+        }
+        button:hover {
+            border: 1px solid gray;
+            background: white;
+            color: black;
+            cursor: pointer;
+        }
+        </style>
+
+        <title>Lab 5</title>
+    </head>
+
+    <body onload="main();">
+        <div id="controller">
+            <button onclick="createPrimitive('plane')">Plane</button>
+            <button onclick="createPrimitive('cube')">Cube</button>
+            <button onclick="createPrimitive('cylinder')">Cylinder</button>
+            <button onclick="createPrimitive('sphere')">Sphere</button>
+            <button onclick="createPrimitive('sphere')">Sphere</button>
+            <button onclick="createPrimitive('torus')">Torus</button>
+            <button onclick="createPrimitive('cone')">Cone</button>
+            <button onclick="createPrimitive('model')">Model Boat</button>
+            <button onclick="createPrimitive('empty')">Empty</button>
+            <button onclick="del()">Delete</button>
+            <br>
+            <br>
+            <button onclick="setMode(window['translate'])">Translate</button>
+            <button onclick="setMode(window['rotate'])">Rotate</button>
+            <button onclick="setMode(window['scale'])">Scale</button>
+            <br>
+            <button onclick="setAxis(0)">X</button>
+            <button onclick="setAxis(1)">Y</button>
+            <button onclick="setAxis(2)">Z</button>
+            <br>
+            <br>
+            <input type="color" id="colorpicker">
+            <button onclick="setColor()">Set Color</button>
+            <br>
+            <input type="color" id="colorpicker-light">
+            <button onclick="setLightColor()">Set Light Color</button>
+            <br>
+            <br>
+            <button onclick="setDrawMode('TRIANGLES')">Fill</button>
+            <button onclick="setDrawMode('LINES')">Line</button>
+            <button onclick="setDrawMode('POINTS')">Point</button>
+            <br>
+            <br>
+            <button onclick="setRenderMode(1)">Light</button>
+            <button onclick="setRenderMode(2)">Texture</button>
+            <button onclick="setRenderMode(3)">Light+Texture</button>
+            <button onclick="setRenderMode(4)">Light+Bump</button>
+            <button onclick="setRenderMode(5)">Light+Texture+Bump</button>
+            <button onclick="setRenderMode(6)">Cube Mapping</button>
+            <br>
+            <pre id="tree-display"></pre>
+        </div>
+        <canvas id="canvas-main"></canvas>
+    </body>
+</html>
