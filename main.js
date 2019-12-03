@@ -90,9 +90,7 @@ void main() {
         gl_FragColor = sample(vTexCoords);
     } else if (uRenderMode == 3) {
         vec3 normal = normalize(vNormal);
-        vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
-        reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
-        gl_FragColor = cube(reflectDir);
+        gl_FragColor = sample(vTexCoords) * light(normal);
     } else if (uRenderMode == 4) {
         vec3 normal = normalize(vNormal);
         vec3 tangent = normalize(vTangent);
@@ -101,7 +99,21 @@ void main() {
         vec3 bumpnormal = normalize(vec3(sample(vTexCoords + vec3(0.0, 0.0, 1.0))) * 2.0 - 1.0);
         mat3 TBN = mat3(tangent, bitangent, normal);
         normal = normalize(TBN * bumpnormal);
+        gl_FragColor = light(normal);
+    } else if (uRenderMode == 5) {
+        vec3 normal = normalize(vNormal);
+        vec3 tangent = normalize(vTangent);
+        tangent = normalize(tangent - dot(tangent, normal) * normal);
+        vec3 bitangent = cross(normal, tangent);
+        vec3 bumpnormal = normalize(vec3(sample(vTexCoords + vec3(0.0, 0.0, 1.0))) * 2.0 - 1.0);
+        mat3 TBN = mat3(tangent, bitangent, normal);
+        normal = normalize(TBN * bumpnormal);
         gl_FragColor = sample(vTexCoords) * light(normal);
+    } else if (uRenderMode == 6) {
+        vec3 normal = normalize(vNormal);
+        vec3 reflectDir = normalize(reflect(normalize(vVertPos), normal));
+        reflectDir = vec3(uVInv * vec4(reflectDir, 0.0));
+        gl_FragColor = cube(reflectDir);
     } else {
         discard;
     }
@@ -158,7 +170,7 @@ class Primitive extends EmptyNode {
     matDiffuse;      // material diffuse
     matSpecular;     // material specular
     matShininess;    // material shininess
-    renderMode = 1;  // render mode 1: no texture, 2: texture, 3: cubemap
+    renderMode = 1;  // render mode 1: light, 2: texture, 3: light+texture, 4: light+bump, 5: light+texture+bump, 6: cube
 
     updated = false; // buffer updated?
     bPosition;       // vbo for position of vertices
@@ -615,7 +627,7 @@ class Torus extends ParametrizedSurface {
 }
 
 class Cone extends ParametrizedSurface {
-    constructor(b) {
+    constructor() {
         super();
         let sr = [-1.0, 1.0, 0.05];
         let tr = [-1.0, 1.0, 0.05];
@@ -862,7 +874,7 @@ function initScene() {
                 {
                     add(new Cube(8));
                     mat4.scale(curr.transform, curr.transform, v3(1, 0.1, 1));
-                    curr.renderMode = 4;
+                    curr.renderMode = 5;
                     curr.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(0.2, 0.2, 0.2), 3);
                     for (let i = 2; i < curr.texCoords.length; i += 3) {
                         curr.texCoords[i] = 7;
@@ -903,7 +915,7 @@ function initScene() {
                             curr.renderMode = 3;
                         }
                     } else if (random < 0.80) {
-                        add(new Cone(1, 0.5));
+                        add(new Cone());
                         random = Math.random();
                         if (random < 0.30) {
                             curr.renderMode = 1;
@@ -993,6 +1005,10 @@ function createPrimitive(name) {
             add(new Model());
             curr.setMaterial(c, c, c, 3);
         }
+    } else if (name == 'torus') {
+        add(new Torus(2, 1)); // TODO
+    } else if (name == 'cone') {
+        add(new Cone()); // TODO
     } else if (name == 'empty') {
         add(new EmptyNode());
     }

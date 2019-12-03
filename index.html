@@ -57,11 +57,14 @@
             <button onclick="createPrimitive('cube')">Cube</button>
             <button onclick="createPrimitive('cylinder')">Cylinder</button>
             <button onclick="createPrimitive('sphere')">Sphere</button>
+            <button onclick="createPrimitive('sphere')">Sphere</button>
+            <button onclick="createPrimitive('torus')">Torus</button>
+            <button onclick="createPrimitive('cone')">Cone</button>
             <button onclick="createPrimitive('model')">Model Boat</button>
             <button onclick="createPrimitive('empty')">Empty</button>
             <button onclick="del()">Delete</button>
             <br>
-            <pre id="tree-display"></pre>
+            <br>
             <button onclick="setMode(window['translate'])">Translate</button>
             <button onclick="setMode(window['rotate'])">Rotate</button>
             <button onclick="setMode(window['scale'])">Scale</button>
@@ -70,20 +73,27 @@
             <button onclick="setAxis(1)">Y</button>
             <button onclick="setAxis(2)">Z</button>
             <br>
+            <br>
             <input type="color" id="colorpicker">
             <button onclick="setColor()">Set Color</button>
             <br>
             <input type="color" id="colorpicker-light">
             <button onclick="setLightColor()">Set Light Color</button>
             <br>
+            <br>
             <button onclick="setDrawMode('TRIANGLES')">Fill</button>
             <button onclick="setDrawMode('LINES')">Line</button>
             <button onclick="setDrawMode('POINTS')">Point</button>
             <br>
-            <button onclick="setRenderMode(1)">Lighted Surface</button>
+            <br>
+            <button onclick="setRenderMode(1)">Light</button>
             <button onclick="setRenderMode(2)">Texture</button>
-            <button onclick="setRenderMode(3)">Cube Mapping</button>
-            <button onclick="setRenderMode(4)">Bump Mapping</button>
+            <button onclick="setRenderMode(3)">Light+Texture</button>
+            <button onclick="setRenderMode(4)">Light+Bump</button>
+            <button onclick="setRenderMode(5)">Light+Texture+Bump</button>
+            <button onclick="setRenderMode(6)">Cube Mapping</button>
+            <br>
+            <pre id="tree-display"></pre>
         </div>
         <canvas id="canvas-main"></canvas>
     </body>
