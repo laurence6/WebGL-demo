@@ -7,6 +7,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
 
         <script src="data.js"></script>
+        <script src="texture_sky.js"></script>
         <script src="main.js"></script>
 
         <style>
@@ -74,6 +75,15 @@
             <br>
             <input type="color" id="colorpicker-light">
             <button onclick="setLightColor()">Set Light Color</button>
+            <br>
+            <button onclick="setDrawMode('TRIANGLES')">Fill</button>
+            <button onclick="setDrawMode('LINES')">Line</button>
+            <button onclick="setDrawMode('POINTS')">Point</button>
+            <br>
+            <button onclick="setRenderMode(1)">Lighted Surface</button>
+            <button onclick="setRenderMode(2)">Texture</button>
+            <button onclick="setRenderMode(3)">Cube Mapping</button>
+            <button onclick="setRenderMode(4)">Bump Mapping</button>
         </div>
         <canvas id="canvas-main"></canvas>
     </body>

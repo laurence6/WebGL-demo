@@ -14,7 +14,7 @@ varying vec3 vTangent;
 varying vec3 vTexCoords;
 
 void main() {
-    gl_PointSize = 4.0;
+    gl_PointSize = 1.0;
 
     vec4 p = uV * uM * vec4(aPosition, 1.0);
     vVertPos = vec3(p);
@@ -112,14 +112,18 @@ var canvas;
 var gl; // the graphics context (gc)
 var shader; // the shader program
 
+var timer;
 var camera; // camera
 var skybox; // skybox
 var light; // light
 var root; // root of primitives
 var curr; // current primitive
+var treedisplay;
 
 var controllerMode = translate; // a function in {translate, rotate, scale}
 var controllerAxis = 0; // current axis 0: x, 1: y, 2: z
+
+var updater = [];
 
 class EmptyNode {
     parent = null;
@@ -175,8 +179,6 @@ class Primitive extends EmptyNode {
     get drawMode() { return this._drawMode }
     set drawMode(value) {
         switch (value) {
-            case gl.POINTS:
-                break;
             case gl.LINES:
                 if (this._drawMode == gl.TRIANGLES || this._drawMode == gl.POINTS) {
                     let len = this.position.length;
@@ -476,7 +478,7 @@ class Cube extends Primitive {
 
 class Skybox extends Cube {
     constructor() {
-        super(1000);
+        super(800);
         this.transform = mat4.create();
         this.renderMode = 2;
     }
@@ -612,16 +614,16 @@ class Torus extends ParametrizedSurface {
     }
 }
 
-class Helicoid extends ParametrizedSurface {
+class Cone extends ParametrizedSurface {
     constructor(b) {
         super();
         let sr = [-1.0, 1.0, 0.05];
         let tr = [-1.0, 1.0, 0.05];
         let psf = (s, t) => {
             let p = v3(
-                t * cos(pi * s),
-                pi * s * b,
-                t * sin(pi * s),
+                s * cos(pi * t),
+                s,
+                s * sin(pi * t),
             );
             let uv = v3(
                 (s + 1.0) / 2.0,
@@ -654,6 +656,53 @@ class Model extends Primitive {
         }
         this.position.map(x => x*2);
         this.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(1, 1, 1), 3); // XXX: set a default material
+    }
+}
+
+class Moving {
+    obj; // object
+    range;
+    seed;
+    speed;
+
+    constructor(o, r) {
+        this.obj = o;
+        this.range = r;
+        this.seed = Math.random() * Math.PI;
+        this.speed = Math.random() / 2 + 0.5;
+    }
+
+    update() {
+        let x = Math.sin(this.seed + timer.frame * 0.05 * this.speed) * this.range * 0.05;
+        mat4.translate(this.obj.transform, this.obj.transform, v3(0, x, 0));
+    }
+}
+
+class Rotating {
+    obj; // object
+    seed;
+    speed;
+
+    constructor(o) {
+        this.obj = o;
+        this.seed = Math.random() * Math.PI;
+        this.speed = Math.random() / 2 + 0.5;
+    }
+
+    update() {
+        let x = 0.05 * this.speed;
+        mat4.rotateY(this.obj.transform, this.obj.transform, x);
+    }
+}
+
+class Timer {
+    frame = 0;
+    get frame() {
+        return this.frame;
+    }
+
+    update() {
+        this.frame += 1;
     }
 }
 
@@ -691,7 +740,7 @@ class Light extends Sphere {
     specular;
 
     constructor() {
-        super(0.2);
+        super(0.1);
         this.setMaterial(v3(10, 10, 10), v3(0, 0, 0), v3(0, 0, 0), 3);
 
         this.ambient = v3(0.2, 0.2, 0.2);
@@ -702,10 +751,27 @@ class Light extends Sphere {
 
     // upload light params to uniform variables
     update() {
+        mat4.mul(this.transform, mat4.fromRotation(mat4.create(), toRadian(2), v3(0, 1, 0)), this.transform);
+
         gl.uniform3fv(shader.lightPos, vec3.transformMat4(vec3.create(), vec3.create(), mul_m(camera.V, this.transform)));
         gl.uniform3fv(shader.lightAmbient, this.ambient);
         gl.uniform3fv(shader.lightDiffuse, this.diffuse);
         gl.uniform3fv(shader.lightSpecular, this.specular);
+    }
+}
+
+class TreeDisplay {
+    // update hierarchy tree display on the web page
+    update() {
+        let str = '';
+
+        root.display((o, d) => str += '| '.repeat(d) + (typeof(o.name) !== 'undefined' ? o.name : o.constructor.name) + (o == curr ? ' <-' : '') + '\n');
+
+        str += '\n';
+        str += 'Mode: ' + controllerMode.name + '\n';
+        str += 'Axis: ' + 'XYZ'[controllerAxis] + '\n';
+
+        document.getElementById('tree-display').innerText = str;
     }
 }
 
@@ -736,13 +802,20 @@ function main() {
     document.addEventListener('mousedown', onMouseDown, false);
     document.addEventListener('keydown', onKeyDown, false);
 
-    setInterval(drawScene, 30);
+    setTimeout(() => setInterval(drawScene, 30), 1000);
 }
 
+const tilesize = 12;
+
 function initScene() {
+    timer = new Timer();
+    updater.push(timer);
+
+    treedisplay = new TreeDisplay();
+    updater.push(treedisplay);
+
     root = new EmptyNode();
     root.parent = root;
-    mat4.fromTranslation(root.transform, v3(0, -1, 0)); // NOTE: Check Primitive's constructor
     curr = root;
 
     skybox = new Skybox();
@@ -751,25 +824,121 @@ function initScene() {
 
     camera = new Camera();
     add(camera);
-    mat4.targetTo(camera.transform, v3(-8, 8, -8), v3(0, 6, 0), v3(0, 1, 0));
+    mat4.targetTo(camera.transform, v3(15, 8, 15), v3(-1, 8, -1), v3(0, 1, 0));
     curr = root;
+    updater.push(camera);
 
     light = new Light();
     add(light);
-    mat4.fromTranslation(light.transform, v3(0, 12, 0));
+    mat4.fromTranslation(light.transform, v3(0, 2.5, 3));
     curr = root;
+    updater.push(light);
 
-    add(new Sphere(4));
-    curr.renderMode = 2;
+    add(new EmptyNode());
+    {
+        const size = 2;
+        for (let i = -size; i <= size; i++) {
+            for (let j = -size; j <= size; j++) {
+                add(new EmptyNode());
+                curr.name = "EmptyNode at " + i + ", " + j;
+                mat4.fromTranslation(curr.transform, v3(i * tilesize, 0, j * tilesize));
+                updater.push(new Moving(curr, 0.5));
+
+                {
+                    add(new Cube(8));
+                    mat4.scale(curr.transform, curr.transform, v3(1, 0.1, 1));
+                    curr.renderMode = 4;
+                    curr.setMaterial(v3(1, 1, 1), v3(1, 1, 1), v3(0.2, 0.2, 0.2), 3);
+                    for (let i = 2; i < curr.texCoords.length; i += 3) {
+                        curr.texCoords[i] = 7;
+                    }
+                    curr = curr.parent;
+                }
+
+                if (i != 0 || j != 0) {
+                    let random = Math.random();
+                    if (random < 0.20) {
+                        add(new Cube(2));
+                        random = Math.random();
+                        if (random < 0.30) {
+                            curr.renderMode = 1;
+                        } else if (random < 0.60) {
+                            curr.renderMode = 2;
+                        } else {
+                            curr.renderMode = 3;
+                        }
+                    } else if (random < 0.40) {
+                        add(new Sphere(1));
+                        random = Math.random();
+                        if (random < 0.30) {
+                            curr.renderMode = 1;
+                        } else if (random < 0.60) {
+                            curr.renderMode = 2;
+                        } else {
+                            curr.renderMode = 3;
+                        }
+                    } else if (random < 0.60) {
+                        add(new Torus(1, 0.5));
+                        random = Math.random();
+                        if (random < 0.30) {
+                            curr.renderMode = 1;
+                        } else if (random < 0.60) {
+                            curr.renderMode = 2;
+                        } else {
+                            curr.renderMode = 3;
+                        }
+                    } else if (random < 0.80) {
+                        add(new Cone(1, 0.5));
+                        random = Math.random();
+                        if (random < 0.30) {
+                            curr.renderMode = 1;
+                        } else if (random < 0.60) {
+                            curr.renderMode = 2;
+                        } else {
+                            curr.renderMode = 3;
+                        }
+                    } else {
+                        add(new Model());
+                        random = Math.random();
+                        if (random < 0.25) {
+                            curr.renderMode = 1;
+                        } else {
+                            curr.renderMode = 3;
+                        }
+                    }
+
+                    random = Math.random();
+                    if (random < 0.5) {
+                    } else if (random < 0.9) {
+                        curr.drawMode = gl.LINES;
+                    } else {
+                        curr.drawMode = gl.POINTS;
+                    }
+
+                    mat4.fromTranslation(curr.transform, v3(0, 4, 0));
+                    let c = getRandomColor();
+                    curr.setMaterial(c, c, c, 3);
+                    updater.push(new Rotating(curr));
+
+                    curr = curr.parent;
+                }
+
+                curr = curr.parent;
+            }
+        }
+
+    }
 }
 
-function getRandomColor() { return v3(Math.random(), Math.random(), Math.random()); }
+function getDefaultColor() { return v3(1, 1, 1); }
+
+function getRandomColor() { return [0, 0, 0].map(Math.random); }
 
 // get params and create a new primitive with random color
 function createPrimitive(name) {
     if (name == 'plane') {
         let s = window.prompt('Size of plane', '1');
-        let c = getRandomColor();
+        let c = getDefaultColor();
         if (s && c) {
             s = parseFloat(s);
             add(new Plane(s));
@@ -777,7 +946,7 @@ function createPrimitive(name) {
         }
     } else if (name == 'cube') {
         let s = window.prompt('Size of cube', '1');
-        let c = getRandomColor();
+        let c = getDefaultColor();
         if (s && c) {
             s = parseFloat(s);
             add(new Cube(s));
@@ -787,7 +956,7 @@ function createPrimitive(name) {
         let rt = window.prompt('Top radius of cylinder', '0.5');
         let rb = window.prompt('Base radius of cylinder', '0.5');
         let h = window.prompt('Height of cylinder', '1');
-        let c = getRandomColor();
+        let c = getDefaultColor();
         if (rt && rb && h && c) {
             rt = parseFloat(rt);
             rb = parseFloat(rb);
@@ -797,14 +966,14 @@ function createPrimitive(name) {
         }
     } else if (name == 'sphere') {
         let r = window.prompt('Radius of sphere', '0.5');
-        let c = getRandomColor();
+        let c = getDefaultColor();
         if (r && c) {
             r = parseFloat(r);
             add(new Sphere(r));
             curr.setMaterial(c, c, c, 3);
         }
     } else if (name == 'model') {
-        let c = getRandomColor();
+        let c = getDefaultColor();
         if (c) {
             add(new Model());
             curr.setMaterial(c, c, c, 3);
@@ -849,7 +1018,7 @@ function setAxis(a) {
 // controller mode
 // translate on axis for steps
 function translate(obj, axis, step) {
-    step *= 2.0;
+    step *= 1.0;
     let a = vec3.create();
     a[axis] = step;
     mat4.mul(obj.transform, obj.transform, mat4.fromTranslation(mat4.create(), a));
@@ -858,7 +1027,7 @@ function translate(obj, axis, step) {
 // controller mode
 // rotate about axis for steps
 function rotate(obj, axis, step) {
-    step *= toRadian(20);
+    step *= toRadian(10);
     let a = vec3.create();
     a[axis] = 1;
     mat4.mul(obj.transform, obj.transform, mat4.fromRotation(mat4.create(), step, a));
@@ -878,9 +1047,9 @@ function setColor() {
     if (typeof curr.setMaterial !== 'undefined') {
         let v = document.getElementById('colorpicker').value;
         let c = v3(
-            Number.parseInt(v.substr(1,2),16) / 255.0,
-            Number.parseInt(v.substr(3,2),16) / 255.0,
-            Number.parseInt(v.substr(5,2),16) / 255.0,
+            Number.parseInt(v.substr(1, 2), 16) / 255.0,
+            Number.parseInt(v.substr(3, 2), 16) / 255.0,
+            Number.parseInt(v.substr(5, 2), 16) / 255.0,
         );
         curr.setMaterial(c, c, c, 3);
     }
@@ -890,9 +1059,9 @@ function setColor() {
 function setLightColor() {
     let v = document.getElementById('colorpicker-light').value;
     let c = v3(
-        Number.parseInt(v.substr(1,2),16) / 255.0,
-        Number.parseInt(v.substr(3,2),16) / 255.0,
-        Number.parseInt(v.substr(5,2),16) / 255.0,
+        Number.parseInt(v.substr(1, 2), 16) / 255.0,
+        Number.parseInt(v.substr(3, 2), 16) / 255.0,
+        Number.parseInt(v.substr(5, 2), 16) / 255.0,
     );
     light.setMaterial(c.map(x=>x*10), c, c, 3);
     light.ambient = c.map(x=>x*0.2);
@@ -900,28 +1069,21 @@ function setLightColor() {
     light.specular = c.map(x=>x*1.0);
 }
 
+function setDrawMode(mode) {
+    curr.drawMode = gl[mode];
+}
+
+function setRenderMode(mode) {
+    curr.renderMode = mode;
+}
+
 // clear color buffer and depth buffer
 // update camera & light
 // draw primitives
 function drawScene() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    updateTreeDisplay();
-    camera.update();
-    light.update();
+    updater.forEach(o => o.update());
     root.draw(mat4.create());
-}
-
-// update hierarchy tree display on the web page
-function updateTreeDisplay() {
-    let str = '';
-
-    root.display((o, d) => str += '| '.repeat(d) + o.constructor.name + (o == curr ? ' <-' : '') + '\n');
-
-    str += '\n';
-    str += 'Mode: ' + controllerMode.name + '\n';
-    str += 'Axis: ' + 'XYZ'[controllerAxis] + '\n';
-
-    document.getElementById('tree-display').innerText = str;
 }
 
 // called when drawing the init scene or resizing window
@@ -944,6 +1106,8 @@ function initGL() {
 
     gl.enable(gl.DEPTH_TEST);
     gl.clearColor(0.1, 0.1, 0.2, 1.0);
+
+    gl.lineWidth(0.5);
 }
 
 // create shaders and link program
@@ -969,17 +1133,6 @@ function initShaders() {
 }
 
 function initTexture2D() {
-    const textureSrc = [
-        'texture/cubemap-dreese/negative-x.jpg',
-        'texture/cubemap-dreese/positive-x.jpg',
-        'texture/cubemap-dreese/negative-z.jpg',
-        'texture/cubemap-dreese/positive-z.jpg',
-        'texture/cubemap-dreese/negative-y.jpg',
-        'texture/cubemap-dreese/positive-y.jpg',
-        'texture/sphere-dreese.jpg',
-        'texture/texture-1.jpg',
-        'texture/texture-1-bump.jpg',
-    ]
     textureSrc.forEach((src, i) => {
         let texture = gl.createTexture();
         let img = new Image();
@@ -1000,26 +1153,17 @@ function initTexture2D() {
 }
 
 function initTextureCubemap() {
-    const textureCubemapSrc = [
-        ['texture/cubemap-dreese/positive-x.jpg', 1024, gl.TEXTURE_CUBE_MAP_POSITIVE_X],
-        ['texture/cubemap-dreese/negative-x.jpg', 1024, gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
-        ['texture/cubemap-dreese/positive-y.jpg', 1024, gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
-        ['texture/cubemap-dreese/negative-y.jpg', 1024, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
-        ['texture/cubemap-dreese/positive-z.jpg', 1024, gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
-        ['texture/cubemap-dreese/negative-z.jpg', 1024, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z],
-    ];
-
     let textureCubemap = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, textureCubemap);
 
     textureCubemapSrc.forEach(([src, dim, type]) => {
         let img = new Image();
-        gl.texImage2D(type, 0, gl.RGBA, dim, dim, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl[type], 0, gl.RGBA, dim, dim, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         img.addEventListener('load', () => {
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, textureCubemap);
-            gl.texImage2D(type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+            gl.texImage2D(gl[type], 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
             gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
         });
         img.src = src;
@@ -1067,22 +1211,22 @@ function onKeyDown(event) {
     switch (event.keyCode) {
         // move primitive
         case 87: // W
-            translate(event.shiftKey ? root : curr, 0, 1);
+            translate(event.shiftKey ? root : camera, 2, -0.5);
             break;
         case 83: // S
-            translate(event.shiftKey ? root : curr, 0, -1);
+            translate(event.shiftKey ? root : camera, 2, 0.5);
             break;
         case 65: // A
-            translate(event.shiftKey ? root : curr, 2, -1);
+            rotate(event.shiftKey ? root : camera, 1, 1.0);
             break;
         case 68: // D
-            translate(event.shiftKey ? root : curr, 2, 1);
+            rotate(event.shiftKey ? root : camera, 1, -1.0);
             break;
         case 81: // Q
-            translate(event.shiftKey ? root : curr, 1, 1);
+            rotate(event.shiftKey ? root : camera, 0, -1.0);
             break;
         case 69: // E
-            translate(event.shiftKey ? root : curr, 1, -1);
+            rotate(event.shiftKey ? root : camera, 0, 1.0);
             break;
 
         // rotate camera
