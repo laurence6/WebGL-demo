@@ -1,3 +1,9 @@
+- [Sky scene](https://laurence6.github.io/WebGL-demo/index.html)
+- [Mountain scene](https://laurence6.github.io/WebGL-demo/mountain.html)
+- [Ohio State University Dreese Lab scene](https://laurence6.github.io/WebGL-demo/dreese.html)
+  - View on [Google Maps](https://www.google.com/maps/place/Dreese+Lab/@40.0027346,-83.016035,18.54z/data=!4m8!1m2!3m1!2sDreese+Lab!3m4!1s0x88388e96732423c1:0xc18a2f8aed8d8b53!8m2!3d40.0022856!4d-83.0158697)
+- [Debug scene](https://laurence6.github.io/WebGL-demo/debug.html)
+
 The initial scene is divided into tiles. Each tile has a randomly generated object.
 
 There are six possible rendering modes for objects: light only, texture only, light + texture, light + bump, light + texture + bump, cubemap.
